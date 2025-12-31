@@ -25,12 +25,12 @@ function toggle_export_fields_si(frm) {
     const is_export = frm.doc.custom_order_type === "Export";
     
     // Fields to toggle in grid view (in_list_view fields)
-    const export_fields = [
-        // "custom_net_weight",
-        // "custom_cif_unit_price",
+     const export_fields = [
+        "custom_net_weight",
+        "custom_cif_unit_price",
         "custom_cif_unit_price_",
-        // "custom_freight__insurance_",
-        // "custom__cif_total_amount",
+        "custom_freight__insurance_",
+        "custom__cif_total_amount",
         "custom___cif_total_amount"
     ];
     
