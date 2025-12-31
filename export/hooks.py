@@ -249,7 +249,9 @@ app_license = "mit"
 
 
 doctype_js = {
-    "Sales Order": "public/js/sales_order.js"
+    "Sales Order": "public/js/sales_order.js",
+    "Sales Invoice": "public/js/sales_invoice.js",
+    "Delivery Note": "public/js/delivery_note.js"
 }
 
 override_whitelisted_methods = {
