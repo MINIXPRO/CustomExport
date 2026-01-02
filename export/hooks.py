@@ -247,12 +247,13 @@ app_license = "mit"
 # List of apps whose translatable strings should be excluded from this app's translations.
 # ignore_translatable_strings_from = []
 
-
 doctype_js = {
     "Sales Order": "public/js/sales_order.js",
     "Sales Invoice": "public/js/sales_invoice.js",
-    "Delivery Note": "public/js/delivery_note.js"
+    "Delivery Note": "public/js/delivery_note.js",
+    "Packing Slip": "public/js/packing_slip.js"
 }
+
 
 override_whitelisted_methods = {
     "erpnext.selling.doctype.sales_order.sales_order.make_sales_invoice":
