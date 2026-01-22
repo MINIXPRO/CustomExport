@@ -1,0 +1,153 @@
+{
+ "actions": [],
+ "creation": "2026-01-22 16:00:00",
+ "doctype": "DocType",
+ "editable_grid": 1,
+ "engine": "InnoDB",
+ "field_order": [
+  "parent_item",
+  "parent_item_name",
+  "sub_item_code",
+  "sub_item_name",
+  "sub_description",
+  "qty",
+  "custom_net_weight",
+  "base_rate",
+  "rate",
+  "amount",
+  "custom_freight__insurance_",
+  "custom_cif_unit_price",
+  "custom__cif_total_amount",
+  "custom_cif_unit_price_",
+  "custom___cif_total_amount"
+ ],
+ "fields": [
+  {
+   "fieldname": "parent_item",
+   "fieldtype": "Link",
+   "in_list_view": 1,
+   "label": "Parent Item",
+   "options": "Item",
+   "read_only": 1,
+   "reqd": 1
+  },
+  {
+   "fieldname": "parent_item_name",
+   "fieldtype": "Data",
+   "in_list_view": 1,
+   "label": "Parent Item Name",
+   "read_only": 1
+  },
+  {
+   "fieldname": "sub_item_code",
+   "fieldtype": "Link",
+   "in_list_view": 1,
+   "label": "Sub Item Code",
+   "options": "Item",
+   "read_only": 1,
+   "reqd": 1
+  },
+  {
+   "fieldname": "sub_item_name",
+   "fieldtype": "Data",
+   "in_list_view": 1,
+   "label": "Sub Item Name",
+   "read_only": 1
+  },
+  {
+   "fieldname": "sub_description",
+   "fieldtype": "Small Text",
+   "label": "Sub Description"
+  },
+  {
+   "fieldname": "qty",
+   "fieldtype": "Float",
+   "in_list_view": 1,
+   "label": "Quantity",
+   "precision": "9"
+  },
+  {
+   "fetch_from": "sub_item_code.weight_per_unit",
+   "fieldname": "custom_net_weight",
+   "fieldtype": "Float",
+   "in_list_view": 1,
+   "label": "Net Weight",
+   "precision": "5"
+  },
+  {
+   "fieldname": "base_rate",
+   "fieldtype": "Currency",
+   "label": "Base Rate",
+   "options": "Company:company:default_currency",
+   "precision": "2",
+   "read_only": 1
+  },
+  {
+   "fieldname": "rate",
+   "fieldtype": "Currency",
+   "in_list_view": 1,
+   "label": "Rate",
+   "options": "currency",
+   "precision": "2"
+  },
+  {
+   "fieldname": "amount",
+   "fieldtype": "Currency",
+   "in_list_view": 1,
+   "label": "Amount",
+   "options": "currency",
+   "precision": "2",
+   "read_only": 1
+  },
+  {
+   "fieldname": "custom_freight__insurance_",
+   "fieldtype": "Float",
+   "in_list_view": 1,
+   "label": "Freight & Insurance %",
+   "precision": "2"
+  },
+  {
+   "fieldname": "custom_cif_unit_price_",
+   "fieldtype": "Currency",
+   "in_list_view": 1,
+   "label": "CIF Unit Price ",
+   "options": "currency",
+   "precision": "2"
+  },
+  {
+   "fieldname": "custom___cif_total_amount",
+   "fieldtype": "Currency",
+   "in_list_view": 1,
+   "label": "CIF Total Amount",
+   "options": "currency",
+   "precision": "2"
+  },
+  {
+   "fieldname": "custom_cif_unit_price",
+   "fieldtype": "Currency",
+   "label": "CIF Unit Price (Company Currency)",
+   "options": "Company:company:default_currency",
+   "precision": "2"
+  },
+  {
+   "fieldname": "custom__cif_total_amount",
+   "fieldtype": "Currency",
+   "label": "CIF Total Amount (Company Currency)",
+   "options": "Company:company:default_currency",
+   "precision": "2"
+  }
+ ],
+ "istable": 1,
+ "links": [],
+ "modified": "2026-01-22 22:53:26.246172",
+ "modified_by": "Administrator",
+ "module": "Export",
+ "name": "Sales Order Sub Item",
+ "owner": "Administrator",
+ "permissions": [],
+ "row_format": "Dynamic",
+ "sort_field": "modified",
+ "sort_order": "DESC",
+ "states": [],
+ "track_changes": 1
+}
