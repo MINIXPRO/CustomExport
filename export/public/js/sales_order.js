@@ -63,7 +63,9 @@ function apply_parent_values_from_sub_items(frm) {
             grouped[sub.parent_item] = {
                 rate_sum: 0,
                 qty: null,
-                has_qty: false
+                has_qty: false,
+                freight_pct: null,
+                has_freight: false
             };
         }
 
@@ -72,6 +74,11 @@ function apply_parent_values_from_sub_items(frm) {
         if (!grouped[sub.parent_item].has_qty && (sub.qty || sub.qty === 0)) {
             grouped[sub.parent_item].qty = flt(sub.qty);
             grouped[sub.parent_item].has_qty = true;
+        }
+
+        if (!grouped[sub.parent_item].has_freight && (sub.custom_freight__insurance_ || sub.custom_freight__insurance_ === 0)) {
+            grouped[sub.parent_item].freight_pct = flt(sub.custom_freight__insurance_);
+            grouped[sub.parent_item].has_freight = true;
         }
     });
 
@@ -83,11 +90,16 @@ function apply_parent_values_from_sub_items(frm) {
 
         let next_rate = group.rate_sum;
         let next_qty = group.has_qty ? group.qty : flt(row.qty);
+        let next_freight = group.has_freight ? group.freight_pct : flt(row.custom_freight__insurance_);
 
         frappe.model.set_value(row.doctype, row.name, "rate", next_rate);
 
         if (group.has_qty) {
             frappe.model.set_value(row.doctype, row.name, "qty", next_qty);
+        }
+
+        if (group.has_freight) {
+            frappe.model.set_value(row.doctype, row.name, "custom_freight__insurance_", next_freight);
         }
 
         let base_rate = next_rate * conversion_rate;
