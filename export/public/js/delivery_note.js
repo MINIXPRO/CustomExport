@@ -39,11 +39,58 @@ frappe.ui.form.on("Delivery Note", {
         calculate_so_cif_totals(frm);
     },
 
-    onload(frm) {
+    onload_post_render(frm) {
         toggle_export_fields(frm);
         toggle_sub_items_columns(frm);
+        carry_forward_sub_items(frm);
     }
 });
+
+
+function carry_forward_sub_items(frm) {
+    // If custom_sub_items already populated, skip
+    if (frm.doc.custom_sub_items && frm.doc.custom_sub_items.length > 0) return;
+
+    // Get Sales Order reference from first item's sales_order_no field
+    let sales_order_ref = null;
+    if (frm.doc.items && frm.doc.items.length > 0) {
+        sales_order_ref = frm.doc.items[0].against_sales_order;
+    }
+
+    if (sales_order_ref) {
+        frappe.call({
+            method: 'frappe.client.get',
+            args: {
+                doctype: 'Sales Order',
+                name: sales_order_ref
+            },
+            callback: function(r) {
+                if (r.message && r.message.custom_sub_items && r.message.custom_sub_items.length > 0) {
+                    frm.doc.custom_sub_items = [];
+                    r.message.custom_sub_items.forEach(function(sub_item) {
+                        let new_sub = frm.add_child('custom_sub_items');
+                        new_sub.parent_item = sub_item.parent_item;
+                        new_sub.parent_item_name = sub_item.parent_item_name;
+                        new_sub.sub_item_code = sub_item.sub_item_code;
+                        new_sub.sub_item_name = sub_item.sub_item_name;
+                        new_sub.sub_description = sub_item.sub_description;
+                        new_sub.qty = sub_item.qty;
+                        new_sub.custom_net_weight = sub_item.custom_net_weight;
+                        new_sub.base_rate = sub_item.base_rate;
+                        new_sub.rate = sub_item.rate;
+                        new_sub.amount = sub_item.amount;
+                        new_sub.custom_freight__insurance_ = sub_item.custom_freight__insurance_;
+                        new_sub.custom_cif_unit_price = sub_item.custom_cif_unit_price;
+                        new_sub.custom__cif_total_amount = sub_item.custom__cif_total_amount;
+                        new_sub.custom_cif_unit_price_ = sub_item.custom_cif_unit_price_;
+                        new_sub.custom___cif_total_amount = sub_item.custom___cif_total_amount;
+                    });
+                    frm.refresh_field('custom_sub_items');
+                }
+            }
+        });
+    }
+}
 
 
 function apply_parent_values_from_sub_items(frm) {

@@ -80,8 +80,7 @@
    "fieldtype": "Currency",
    "label": "Base Rate",
    "options": "Company:company:default_currency",
-   "precision": "2",
-   "read_only": 1
+   "precision": "2"
   },
   {
    "fieldname": "rate",
@@ -97,8 +96,7 @@
    "in_list_view": 1,
    "label": "Amount",
    "options": "currency",
-   "precision": "2",
-   "read_only": 1
+   "precision": "2"
   },
   {
    "fieldname": "custom_freight__insurance_",
@@ -110,20 +108,16 @@
   {
    "fieldname": "custom_cif_unit_price",
    "fieldtype": "Currency",
-   "in_list_view": 0,
    "label": "CIF Unit Price (Company Currency)",
    "options": "Company:company:default_currency",
-   "precision": "2",
-   "read_only": 1
+   "precision": "2"
   },
   {
    "fieldname": "custom__cif_total_amount",
    "fieldtype": "Currency",
-   "in_list_view": 0,
    "label": "CIF Total Amount (Company Currency)",
    "options": "Company:company:default_currency",
-   "precision": "2",
-   "read_only": 1
+   "precision": "2"
   },
   {
    "fieldname": "custom_cif_unit_price_",
@@ -131,8 +125,7 @@
    "in_list_view": 1,
    "label": "CIF Unit Price (Order Currency)",
    "options": "currency",
-   "precision": "2",
-   "read_only": 1
+   "precision": "2"
   },
   {
    "fieldname": "custom___cif_total_amount",
@@ -140,15 +133,14 @@
    "in_list_view": 1,
    "label": "CIF Total Amount (Order Currency)",
    "options": "currency",
-   "precision": "2",
-   "read_only": 1
+   "precision": "2"
   }
  ],
  "grid_page_length": 50,
  "index_web_pages_for_search": 1,
  "istable": 1,
  "links": [],
- "modified": "2026-01-24 12:00:00.000000",
+ "modified": "2026-01-24 16:30:57.813887",
  "modified_by": "Administrator",
  "module": "Export",
  "name": "Delivery Note Sub Items",
