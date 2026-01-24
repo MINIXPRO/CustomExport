@@ -296,7 +296,7 @@ frappe.ui.form.on("Delivery Note Item", {
 /************************************
  * DELIVERY NOTE SUB ITEM EVENTS
  ************************************/
-frappe.ui.form.on("Delivery Note Sub Item", {
+frappe.ui.form.on("Delivery Note Sub Items", {
     rate(frm, cdt, cdn) {
         calculate_sub_item_base_rate(frm, cdt, cdn);
         calculate_sub_item_cif_values(frm, cdt, cdn);
@@ -366,8 +366,6 @@ function calculate_sub_item_base_rate(frm, cdt, cdn) {
  * SUB-ITEM ROW-LEVEL CIF CALCULATION
  ************************************/
 function calculate_sub_item_cif_values(frm, cdt, cdn) {
-    if (frm.doc.custom_order_type !== "Export") return;
-
     let row = locals[cdt][cdn];
 
     let base_rate = flt(row.base_rate);
@@ -375,8 +373,12 @@ function calculate_sub_item_cif_values(frm, cdt, cdn) {
     let qty = flt(row.qty);
     let freight_pct = flt(row.custom_freight__insurance_);
 
-    // Calculate Amount
+    // Calculate Amount (always)
     let amount = rate * qty;
+    frappe.model.set_value(cdt, cdn, "amount", amount);
+
+    // CIF calculations only for Export orders
+    if (frm.doc.custom_order_type !== "Export") return;
 
     // Company currency CIF
     let cif_unit_company = base_rate + (base_rate * freight_pct / 100);
@@ -386,7 +388,6 @@ function calculate_sub_item_cif_values(frm, cdt, cdn) {
     let cif_unit_currency = rate + (rate * freight_pct / 100);
     let cif_total_currency = cif_unit_currency * qty;
 
-    frappe.model.set_value(cdt, cdn, "amount", amount);
     frappe.model.set_value(cdt, cdn, "custom_cif_unit_price", cif_unit_company);
     frappe.model.set_value(cdt, cdn, "custom__cif_total_amount", cif_total_company);
     frappe.model.set_value(cdt, cdn, "custom_cif_unit_price_", cif_unit_currency);
