@@ -1,7 +1,7 @@
 /************************************
- * SALES ORDER (PARENT)
+ * PURCHASE INVOICE (PARENT)
  ************************************/
-frappe.ui.form.on("Sales Order", {
+frappe.ui.form.on("Purchase Invoice", {
     refresh(frm) {
         toggle_export_fields(frm);
         toggle_cif_total_by_currency(frm);
@@ -21,37 +21,35 @@ frappe.ui.form.on("Sales Order", {
 
             frm.refresh_field('custom_sub_items');
         }
-
-        // toggle_sub_items_table_visibility(frm);
     },
 
-    order_type(frm) {
+    custom_order_type(frm) {
         toggle_export_fields(frm);
         toggle_sub_items_columns(frm);
-        calculate_so_cif_totals(frm);
+        calculate_pi_cif_totals(frm);
     },
 
     currency(frm) {
         toggle_cif_total_by_currency(frm);
-        calculate_so_cif_totals(frm);
+        calculate_pi_cif_totals(frm);
     },
 
     validate(frm) {
         // Recalculate all sub-item values first
         if (frm.doc.custom_sub_items) {
             frm.doc.custom_sub_items.forEach(row => {
-                calculate_sub_item_cif_values(frm, 'Sales Order Sub Item', row.name);
+                calculate_sub_item_cif_values(frm, 'Purchase Invoice Sub Item', row.name);
             });
         }
 
         apply_parent_values_from_sub_items(frm);
-        calculate_so_cif_totals(frm);
-        // Don't toggle fields during validate to avoid errors
+        calculate_pi_cif_totals(frm);
     },
-    
+
     onload(frm) {
         toggle_export_fields(frm);
         toggle_sub_items_columns(frm);
+        carry_forward_sub_items(frm);
     }
 });
 
@@ -120,6 +118,67 @@ function apply_parent_values_from_sub_items(frm) {
 }
 
 
+function carry_forward_sub_items(frm) {
+    // If custom_sub_items already populated, skip
+    if (frm.doc.custom_sub_items && frm.doc.custom_sub_items.length > 0) return;
+
+    // Get reference from items child table - try Purchase Order first, then Purchase Receipt
+    let ref_doctype = null;
+    let ref_name = null;
+    if (frm.doc.items && frm.doc.items.length > 0) {
+        if (frm.doc.items[0].purchase_receipt) {
+            ref_doctype = 'Purchase Receipt';
+            ref_name = frm.doc.items[0].purchase_receipt;
+        }else if (frm.doc.items[0].purchase_order) {
+            ref_doctype = 'Purchase Order';
+            ref_name = frm.doc.items[0].purchase_order;
+        } 
+    }
+
+    if (ref_doctype && ref_name) {
+        frappe.call({
+            method: 'frappe.client.get',
+            args: {
+                doctype: ref_doctype,
+                name: ref_name
+            },
+            callback: function(r) {
+                if (r.message) {
+                    // Carry forward order type
+                    if (r.message.custom_order_type) {
+                        frm.set_value('custom_order_type', r.message.custom_order_type);
+                    }
+
+                    // Carry forward sub-items if present
+                    if (r.message.custom_sub_items && r.message.custom_sub_items.length > 0) {
+                        frm.doc.custom_sub_items = [];
+                        r.message.custom_sub_items.forEach(function(sub_item) {
+                            let new_sub = frm.add_child('custom_sub_items');
+                            new_sub.parent_item = sub_item.parent_item;
+                            new_sub.parent_item_name = sub_item.parent_item_name;
+                            new_sub.sub_item_code = sub_item.sub_item_code;
+                            new_sub.sub_item_name = sub_item.sub_item_name;
+                            new_sub.sub_description = sub_item.sub_description;
+                            new_sub.qty = sub_item.qty;
+                            new_sub.custom_net_weight = sub_item.custom_net_weight;
+                            new_sub.base_rate = sub_item.base_rate;
+                            new_sub.rate = sub_item.rate;
+                            new_sub.amount = sub_item.amount;
+                            new_sub.custom_freight__insurance_ = sub_item.custom_freight__insurance_;
+                            new_sub.custom_cif_unit_price = sub_item.custom_cif_unit_price;
+                            new_sub.custom__cif_total_amount = sub_item.custom__cif_total_amount;
+                            new_sub.custom_cif_unit_price_ = sub_item.custom_cif_unit_price_;
+                            new_sub.custom___cif_total_amount = sub_item.custom___cif_total_amount;
+                        });
+                        frm.refresh_field('custom_sub_items');
+                    }
+                }
+            }
+        });
+    }
+}
+
+
 function toggle_cif_total_by_currency(frm) {
     const show = frm.doc.currency !== "INR";
     frm.toggle_display("custom_cif_total_amount_", show);
@@ -129,13 +188,13 @@ function toggle_cif_total_by_currency(frm) {
 function toggle_sub_items_columns(frm) {
     if (!frm.fields_dict.custom_sub_items) return;
 
-    const is_export = frm.doc.order_type === "Export";
+    const is_import = frm.doc.custom_order_type === "Import";
 
     let grid = frm.fields_dict.custom_sub_items.grid;
     let columns_to_show = [];
 
-    if (is_export) {
-        // Display columns for Export order type
+    if (is_import) {
+        // Display columns for Import order type
         columns_to_show = [
             { fieldname: 'parent_item', columns: 1 },
             { fieldname: 'sub_item_code', columns: 1 },
@@ -148,37 +207,34 @@ function toggle_sub_items_columns(frm) {
             { fieldname: 'custom___cif_total_amount', columns: 1 }
         ];
     } else {
-        // Reset to default columns for non-Export order types
+        // Reset to default columns for non-Import order types
         columns_to_show = [];
     }
 
-    
-        let value = {};
-        value[grid.doctype] = columns_to_show;
+    let value = {};
+    value[grid.doctype] = columns_to_show;
 
-        frappe.model.user_settings.save(frm.doctype, 'GridView', value).then((r) => {
-            frappe.model.user_settings[frm.doctype] = r.message || r;
-            grid.reset_grid();
-            frm.refresh_field("custom_sub_items");
-        });
-
-    
+    frappe.model.user_settings.save(frm.doctype, 'GridView', value).then((r) => {
+        frappe.model.user_settings[frm.doctype] = r.message || r;
+        grid.reset_grid();
+        frm.refresh_field("custom_sub_items");
+    });
 }
 
 
 /************************************
- * SHOW / HIDE EXPORT FIELDS (ITEMS)
+ * SHOW / HIDE IMPORT FIELDS (ITEMS)
  ************************************/
 function toggle_export_fields(frm) {
     if (!frm.fields_dict.items) return;
 
-    const is_export = frm.doc.order_type === "Export";
+    const is_import = frm.doc.custom_order_type === "Import";
 
     let grid = frm.fields_dict.items.grid;
     let columns_to_show = [];
 
-    if (is_export) {
-        // Display columns for Export order type
+    if (is_import) {
+        // Display columns for Import order type
         columns_to_show = [
             { fieldname: 'item_code', columns: 1 },
             { fieldname: 'qty', columns: 1 },
@@ -190,13 +246,13 @@ function toggle_export_fields(frm) {
             { fieldname: 'custom___cif_total_amount', columns: 1 }
         ];
     } else {
-        // Reset to default columns for non-Export order types
+        // Reset to default columns for non-Import order types
         columns_to_show = [
             { fieldname: 'item_code', columns: 2 },
-            { fieldname: 'delivery_date', columns: 2 },
             { fieldname: 'qty', columns: 2 },
             { fieldname: 'rate', columns: 2 },
-            { fieldname: 'amount', columns: 2 },];
+            { fieldname: 'amount', columns: 2 }
+        ];
     }
 
     try {
@@ -208,16 +264,24 @@ function toggle_export_fields(frm) {
             grid.reset_grid();
             frm.refresh_field("items");
         });
-
     } catch (e) {
-        console.log("Error toggling export fields:", e);
     }
 }
 
 
+/************************************
+ * CALCULATE CIF VALUES (ROW LEVEL)
+ ************************************/
+function calculate_cif_values(frm, cdt, cdn) {
+    let row = locals[cdt][cdn];
+    if (!row) return;
 
-frappe.ui.form.on("Sales Order Item", {
-    items_add(frm, cdt, cdn) {
+    calculate_sub_item_cif_values(frm, cdt, cdn);
+}
+
+
+frappe.ui.form.on("Purchase Invoice Item", {
+    items_add(frm) {
         // Ensure visibility is set when new row is added
         setTimeout(() => {
             toggle_export_fields(frm);
@@ -272,9 +336,6 @@ frappe.ui.form.on("Sales Order Item", {
                             indicator: 'green'
                         }, 3);
                     }
-
-                    // Toggle visibility after operation
-                    // toggle_sub_items_table_visibility(frm);
                 }
             });
         } else {
@@ -293,62 +354,28 @@ frappe.ui.form.on("Sales Order Item", {
                 return sub.parent_item !== row.item_code;
             });
             frm.refresh_field('custom_sub_items');
-
-            // Toggle visibility after removal
-            // toggle_sub_items_table_visibility(frm);
         }
     }
 });
 
 
-
-frappe.ui.form.on("Sales Order Sub Item", {
+frappe.ui.form.on("Purchase Invoice Sub Item", {
     rate(frm, cdt, cdn) {
         calculate_sub_item_base_rate(frm, cdt, cdn);
         calculate_sub_item_cif_values(frm, cdt, cdn);
+        calculate_pi_cif_totals(frm);
     },
 
     qty(frm, cdt, cdn) {
         calculate_sub_item_cif_values(frm, cdt, cdn);
+        calculate_pi_cif_totals(frm);
     },
 
     custom_freight__insurance_(frm, cdt, cdn) {
         calculate_sub_item_cif_values(frm, cdt, cdn);
+        calculate_pi_cif_totals(frm);
     }
 });
-
-
-/************************************
- * ROW-LEVEL CIF CALCULATION
- ************************************/
-function calculate_cif_values(frm, cdt, cdn) {
-    if (frm.doc.order_type !== "Export") return;
-
-    let row = locals[cdt][cdn];
-
-    let base_rate = flt(row.base_rate); // company currency (INR)
-    let rate = flt(row.rate);           // order currency
-    let qty = flt(row.qty);
-    let freight_pct = flt(row.custom_freight__insurance_);
-
-    // Company currency CIF
-    let cif_unit_company = base_rate + (base_rate * freight_pct / 100);
-    let cif_total_company = cif_unit_company * qty;
-
-    // Order currency CIF
-    let cif_unit_currency = rate + (rate * freight_pct / 100);
-    let cif_total_currency = cif_unit_currency * qty;
-
-    frappe.model.set_value(cdt, cdn, "custom_cif_unit_price", cif_unit_company);
-    frappe.model.set_value(cdt, cdn, "custom__cif_total_amount", cif_total_company);
-    frappe.model.set_value(cdt, cdn, "custom_cif_unit_price_", cif_unit_currency);
-    frappe.model.set_value(cdt, cdn, "custom___cif_total_amount", cif_total_currency);
-
-    // Recalculate totals after updating row values
-    setTimeout(() => {
-        calculate_so_cif_totals(frm);
-    }, 100);
-}
 
 
 /************************************
@@ -369,7 +396,7 @@ function calculate_sub_item_base_rate(frm, cdt, cdn) {
 
 
 /************************************
- * SUB-ITEM ROW-LEVEL CIF CALCULATION
+ * CALCULATE SUB-ITEM CIF VALUES
  ************************************/
 function calculate_sub_item_cif_values(frm, cdt, cdn) {
     let row = locals[cdt][cdn];
@@ -383,8 +410,8 @@ function calculate_sub_item_cif_values(frm, cdt, cdn) {
     let amount = rate * qty;
     frappe.model.set_value(cdt, cdn, "amount", amount);
 
-    // CIF calculations only for Export orders
-    if (frm.doc.order_type !== "Export") return;
+    // CIF calculations only for Import orders
+    if (frm.doc.custom_order_type !== "Import") return;
 
     // Company currency CIF
     let cif_unit_company = base_rate + (base_rate * freight_pct / 100);
@@ -402,31 +429,25 @@ function calculate_sub_item_cif_values(frm, cdt, cdn) {
 
 
 /************************************
- * SALES ORDER TOTAL CIF
+ * CALCULATE PI CIF TOTALS (HEADER)
  ************************************/
-function calculate_so_cif_totals(frm) {
-    if (frm.doc.order_type !== "Export") {
-        // Clear totals if not export
-        frm.set_value("custom_cif_total_amount_company_currency", 0);
-        frm.set_value("custom_cif_total_amount_", 0);
+function calculate_pi_cif_totals(frm) {
+    if (frm.doc.custom_order_type !== "Import") {
+        frm.set_value('custom_cif_total_amount_company_currency', 0);
+        frm.set_value('custom_cif_total_amount_', 0);
         return;
     }
 
-    let total_company = 0;
-    let total_currency = 0;
+    let total_cif_company = 0;
+    let total_cif_order = 0;
 
-    (frm.doc.items || []).forEach(row => {
-        total_company += flt(row.custom__cif_total_amount);
-        total_currency += flt(row.custom___cif_total_amount);
-    });
+    if (frm.doc.custom_sub_items) {
+        frm.doc.custom_sub_items.forEach(row => {
+            total_cif_company += flt(row.custom__cif_total_amount);
+            total_cif_order += flt(row.custom___cif_total_amount);
+        });
+    }
 
-    frm.set_value(
-        "custom_cif_total_amount_company_currency",
-        total_company
-    );
-
-    frm.set_value(
-        "custom_cif_total_amount_",
-        total_currency
-    );
+    frm.set_value('custom_cif_total_amount_company_currency', total_cif_company);
+    frm.set_value('custom_cif_total_amount_', total_cif_order);
 }

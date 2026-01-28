@@ -35,6 +35,13 @@ frappe.ui.form.on("Sales Invoice", {
     },
 
     validate(frm) {
+        // Recalculate all sub-item values first
+        if (frm.doc.custom_sub_items) {
+            frm.doc.custom_sub_items.forEach(row => {
+                calculate_sub_item_cif_values(frm, 'Sales Invoice Sub Item', row.name);
+            });
+        }
+
         apply_parent_values_from_sub_items(frm);
         calculate_si_cif_totals(frm);
     },
