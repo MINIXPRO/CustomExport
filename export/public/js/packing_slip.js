@@ -221,6 +221,7 @@ function toggle_export_fields(frm) {
     if (is_export) {
         // Display columns for Export order type
         columns_to_show = [
+            { fieldname: 'custom_duty_drawback', columns: 1 },
             { fieldname: 'item_code', columns: 1 },
             { fieldname: 'qty', columns: 1 },
             { fieldname: 'rate', columns: 1 },
