@@ -244,9 +244,10 @@ function toggle_export_fields(frm) {
         columns_to_show = [
             { fieldname: 'item_code', columns: 2 },
             { fieldname: 'schedule_date', columns: 2 },
-            { fieldname: 'qty', columns: 2 },
-            { fieldname: 'rate', columns: 2 },
-            { fieldname: 'amount', columns: 2 }
+            { fieldname: 'qty', columns: 1 },
+            { fieldname: 'rate', columns: 1 },
+            { fieldname: 'amount', columns: 2 },
+            { fieldname: 'item_tax_template', columns: 2 }
         ];
     }
 
