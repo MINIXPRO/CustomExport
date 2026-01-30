@@ -414,7 +414,14 @@ function calculate_sub_item_base_rate(frm, cdt, cdn) {
  * SUB-ITEM ROW-LEVEL CIF CALCULATION
  ************************************/
 function calculate_sub_item_cif_values(frm, cdt, cdn) {
-    let row = locals[cdt][cdn];
+    let row = locals[cdt] && locals[cdt][cdn];
+
+    // Fallback: if row not in locals, find it in frm.doc
+    if (!row) {
+        row = frm.doc.custom_sub_items.find(r => r.name === cdn);
+    }
+
+    if (!row) return; // Exit if row still not found
 
     let base_rate = flt(row.base_rate);
     let rate = flt(row.rate);
