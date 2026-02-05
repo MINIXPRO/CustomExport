@@ -44,6 +44,11 @@ frappe.ui.form.on("Sales Invoice", {
 
         apply_parent_values_from_sub_items(frm);
         calculate_si_cif_totals(frm);
+
+        // Add Bank Charges item at the end when order type is Export
+        if (frm.doc.custom_order_type === "Export") {
+            add_bank_charges_item(frm);
+        }
     },
 
     onload_post_render(frm) {
@@ -376,6 +381,18 @@ function calculate_cif_values(frm, cdt, cdn) {
 
     let row = locals[cdt][cdn];
 
+    // Skip CIF calculation for service items
+    if (row.item_group === "Services") {
+        frappe.model.set_value(cdt, cdn, "custom_cif_unit_price", 0);
+        frappe.model.set_value(cdt, cdn, "custom__cif_total_amount", 0);
+        frappe.model.set_value(cdt, cdn, "custom_cif_unit_price_", 0);
+        frappe.model.set_value(cdt, cdn, "custom___cif_total_amount", 0);
+        setTimeout(() => {
+            calculate_si_cif_totals(frm);
+        }, 100);
+        return;
+    }
+
     let base_rate = flt(row.base_rate); // company currency (INR)
     let rate = flt(row.rate);           // order currency
     let qty = flt(row.qty);
@@ -473,6 +490,9 @@ function calculate_si_cif_totals(frm) {
     let total_currency = 0;
 
     (frm.doc.items || []).forEach(row => {
+        // Skip Bank Charges item when calculating totals
+        if (row.item_code === "Bank Charges") return;
+
         total_company += flt(row.custom__cif_total_amount);
         total_currency += flt(row.custom___cif_total_amount);
     });
@@ -486,6 +506,65 @@ function calculate_si_cif_totals(frm) {
         "custom_cif_total_amount_",
         total_currency
     );
+}
+
+
+/************************************
+ * ADD BANK CHARGES ITEM
+ ************************************/
+function add_bank_charges_item(frm) {
+    if (frm.doc.custom_order_type !== "Export") return;
+
+    // Calculate CIF total and actual total (excluding Bank Charges)
+    let cif_total_currency = 0;
+    let actual_total_currency = 0;
+    let existing_bank_charges_row = null;
+
+    (frm.doc.items || []).forEach(row => {
+        if (row.item_code === "Bank Charges") {
+            existing_bank_charges_row = row;
+            return;
+        }
+        cif_total_currency += flt(row.custom___cif_total_amount);
+        actual_total_currency += flt(row.amount);
+    });
+
+    // Calculate the difference between CIF total and actual total
+    let cif_difference = cif_total_currency - actual_total_currency;
+
+    // Only proceed if there's a positive difference
+    if (cif_difference <= 0) {
+        // Remove Bank Charges if exists and no difference needed
+        if (existing_bank_charges_row) {
+            frm.doc.items = frm.doc.items.filter(row => row.item_code !== "Bank Charges");
+        }
+        return;
+    }
+
+    // If Bank Charges exists, update its rate
+    if (existing_bank_charges_row) {
+        existing_bank_charges_row.rate = cif_difference;
+        existing_bank_charges_row.amount = cif_difference;
+    } else {
+        // Add new Bank Charges item at the end
+        let new_row = frm.add_child("items");
+        new_row.item_code = "Bank Charges";
+        new_row.item_name = "Bank Charges";
+        new_row.description = "Bank Charges";
+        new_row.item_group = "Services";
+        new_row.uom = "Nos";
+        new_row.stock_uom = "Nos";
+        new_row.conversion_factor = 1;
+        new_row.qty = 1;
+        new_row.rate = cif_difference;
+        new_row.amount = cif_difference;
+        new_row.income_account = "Sales - GME";
+        // Set CIF values to 0 for service item
+        new_row.custom_cif_unit_price = 0;
+        new_row.custom__cif_total_amount = 0;
+        new_row.custom_cif_unit_price_ = 0;
+        new_row.custom___cif_total_amount = 0;
+    }
 }
 
 
