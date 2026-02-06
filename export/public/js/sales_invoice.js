@@ -6,6 +6,7 @@ frappe.ui.form.on("Sales Invoice", {
         toggle_export_fields(frm);
         toggle_cif_total_by_currency(frm);
         toggle_sub_items_columns(frm);
+        hide_items_rows(frm);
 
         // Sub-items table configuration (only if field exists)
         if (frm.fields_dict.custom_sub_items) {
@@ -48,6 +49,7 @@ frappe.ui.form.on("Sales Invoice", {
         // Add Bank Charges item at the end when order type is Export
         if (frm.doc.custom_order_type === "Export") {
             add_bank_charges_item(frm);
+            hide_items_rows(frm);
         }
     },
 
@@ -55,9 +57,32 @@ frappe.ui.form.on("Sales Invoice", {
         toggle_export_fields(frm);
         toggle_sub_items_columns(frm);
         carry_forward_sub_items(frm);
+        hide_items_rows(frm);
     }
 });
 
+function hide_items_rows(frm) {
+    const grid = frm.fields_dict?.items?.grid;
+    if (!grid) return;
+
+    const hide = () => {
+        const rows = grid.grid_rows || [];
+        if (!rows.length) return;
+
+        // Example 1: hide by item_code
+        rows.forEach((row) => {
+            if (row?.doc?.item_code === "Bank Charges") {
+                row.wrapper.hide();
+            }
+        });
+
+        // Example 2: hide last row (uncomment if needed)
+        // rows[rows.length - 1].wrapper.hide();
+    };
+
+    // Grid can re-render after refresh/reset, so defer once
+    setTimeout(hide, 0);
+}
 
 function carry_forward_sub_items(frm) {
     // If custom_sub_items already populated, skip
@@ -262,6 +287,7 @@ function toggle_export_fields(frm) {
             frappe.model.user_settings[frm.doctype] = r.message || r;
             grid.reset_grid();
             frm.refresh_field("items");
+            hide_items_rows(frm);
         });
 
     } catch (e) {
@@ -514,12 +540,12 @@ function calculate_si_cif_totals(frm) {
  ************************************/
 function add_bank_charges_item(frm) {
     if (frm.doc.custom_order_type !== "Export") return;
-
+    
     // Calculate CIF total and actual total (excluding Bank Charges)
     let cif_total_currency = 0;
     let actual_total_currency = 0;
     let existing_bank_charges_row = null;
-
+    
     (frm.doc.items || []).forEach(row => {
         if (row.item_code === "Bank Charges") {
             existing_bank_charges_row = row;
@@ -528,10 +554,10 @@ function add_bank_charges_item(frm) {
         cif_total_currency += flt(row.custom___cif_total_amount);
         actual_total_currency += flt(row.amount);
     });
-
+    
     // Calculate the difference between CIF total and actual total
     let cif_difference = cif_total_currency - actual_total_currency;
-
+    
     // Only proceed if there's a positive difference
     if (cif_difference <= 0) {
         // Remove Bank Charges if exists and no difference needed
@@ -547,6 +573,7 @@ function add_bank_charges_item(frm) {
         existing_bank_charges_row.amount = cif_difference;
     } else {
         // Add new Bank Charges item at the end
+        console.log("Adding Bank Charges item with amount:", cif_difference);
         let new_row = frm.add_child("items");
         new_row.item_code = "Bank Charges";
         new_row.item_name = "Bank Charges";
