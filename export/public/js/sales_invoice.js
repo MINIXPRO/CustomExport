@@ -533,8 +533,9 @@ function calculate_si_cif_totals(frm) {
         "custom_cif_total_amount_",
         total_currency
     );
+    let conversion_rate = flt(frm.doc.conversion_rate) || 1;
     frm.set_value("custom_total_amount", total_item_amount);
-    frm.set_value("custom_total_company_currency", total_item_amount);
+    frm.set_value("custom_total_company_currency", total_item_amount * conversion_rate);
 }
 
 
