@@ -514,6 +514,7 @@ function calculate_si_cif_totals(frm) {
 
     let total_company = 0;
     let total_currency = 0;
+    let total_item_amount = 0;
 
     (frm.doc.items || []).forEach(row => {
         // Skip Bank Charges item when calculating totals
@@ -521,17 +522,19 @@ function calculate_si_cif_totals(frm) {
 
         total_company += flt(row.custom__cif_total_amount);
         total_currency += flt(row.custom___cif_total_amount);
+        total_item_amount += flt(row.amount);
     });
 
     frm.set_value(
         "custom_cif_total_amount_company_currency",
         total_company
     );
-
     frm.set_value(
         "custom_cif_total_amount_",
         total_currency
     );
+    frm.set_value("custom_total_amount", total_item_amount);
+    frm.set_value("custom_total_company_currency", total_item_amount);
 }
 
 
