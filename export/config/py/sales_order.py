@@ -16,6 +16,52 @@ def make_sales_invoice_custom(source_name, target_doc=None, ignore_permissions=F
     # Pass Order Type → Sales Invoice
     doc.custom_order_type = so.order_type
 
+    if so.order_type == "Export":
+        # Carry forward parent-level export fields
+        parent_fields = [
+            "custom_total_amount",
+            "custom_total_company_currency",
+            "custom_cif_total_amount_",
+            "custom_cif_total_amount_company_currency",
+            "custom_mode",
+            "custom_loading_port",
+            "custom_loading_port_code",
+            "custom_discharge_port",
+            "custom_discharge_port_code",
+            "custom_final_destination",
+            "custom_shipping_mark",
+            "custom_the_state_of_origin_of_goods",
+            "custom_district_of_origin_of_goods",
+            "custom_we_intend_to_claim_benefit_under_rodtep_scheme",
+            "custom_export_under_advance_license",
+            "custom_details_of_preferential_agreements",
+        ]
+        for field in parent_fields:
+            if hasattr(so, field):
+                setattr(doc, field, getattr(so, field))
+
+        # Carry forward item-level CIF fields
+        item_fields = [
+            "custom_duty_drawback",
+            "custom_net_weight",
+            "custom_freight__insurance_",
+            "custom_cif_unit_price",
+            "custom__cif_total_amount",
+            "custom_cif_unit_price_",
+            "custom___cif_total_amount",
+        ]
+
+        # Build lookup from SO Item name → SO Item row
+        so_item_map = {row.name: row for row in so.items}
+
+        for si_item in doc.items:
+            so_item = so_item_map.get(si_item.so_detail)
+            if not so_item:
+                continue
+            for field in item_fields:
+                if hasattr(so_item, field):
+                    setattr(si_item, field, getattr(so_item, field))
+
     return doc
 
 
