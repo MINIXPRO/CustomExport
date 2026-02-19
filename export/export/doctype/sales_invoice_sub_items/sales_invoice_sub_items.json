@@ -20,7 +20,8 @@
   "custom_cif_unit_price",
   "custom__cif_total_amount",
   "custom_cif_unit_price_",
-  "custom___cif_total_amount"
+  "custom___cif_total_amount",
+  "duty_drawback"
  ],
  "fields": [
   {
@@ -139,13 +140,21 @@
    "options": "currency",
    "precision": "2",
    "read_only": 1
+  },
+  {
+   "depends_on": "eval:parent.custom_order_type==\"Export\"",
+   "fieldname": "duty_drawback",
+   "fieldtype": "Select",
+   "in_list_view": 1,
+   "label": "Duty Drawback",
+   "options": "NA\nITC-8467B"
   }
  ],
  "grid_page_length": 50,
  "index_web_pages_for_search": 1,
  "istable": 1,
  "links": [],
- "modified": "2026-02-19 14:28:25.580913",
+ "modified": "2026-02-19 16:07:55.087678",
  "modified_by": "Administrator",
  "module": "Export",
  "name": "Sales Invoice Sub Items",

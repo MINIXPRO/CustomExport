@@ -225,6 +225,7 @@ function toggle_sub_items_columns(frm) {
             { fieldname: 'amount', columns: 1 },
             { fieldname: 'custom_net_weight', columns: 1 },
             { fieldname: 'custom_freight__insurance_', columns: 1 },
+            { fieldname: 'custom_duty_drawback', columns: 1 },
             { fieldname: 'custom_cif_unit_price_', columns: 1 },
             { fieldname: 'custom___cif_total_amount', columns: 1 }
         ];
@@ -345,6 +346,7 @@ frappe.ui.form.on("Sales Invoice Item", {
                             sub_row.sub_item_code = sub_item.sub_item_code;
                             sub_row.sub_item_name = sub_item.sub_item_name;
                             sub_row.sub_description = sub_item.sub_description;
+                            sub_row.custom_duty_drawback = row.custom_duty_drawback;
                         });
 
                         frm.refresh_field('custom_sub_items');
