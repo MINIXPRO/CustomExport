@@ -63,7 +63,7 @@ frappe.ui.form.on("Sales Invoice", {
                             sub.doctype,
                             sub.name,
                             "duty_drawback",
-                            item.duty_drawback
+                            item.custom_duty_drawback
                         );
                     }
                 });
@@ -286,7 +286,7 @@ function toggle_export_fields(frm) {
     if (is_export) {
         // Display columns for Export order type
         columns_to_show = [
-            { fieldname: 'duty_drawback', columns: 1 },
+            { fieldname: 'custom_duty_drawback', columns: 1 },
             { fieldname: 'item_code', columns: 1 },
             { fieldname: 'qty', columns: 1 },
             { fieldname: 'rate', columns: 1 },
@@ -343,7 +343,7 @@ frappe.ui.form.on("Sales Invoice Item", {
         calculate_cif_values(frm, cdt, cdn);
     },
     
-    duty_drawback(frm, cdt, cdn) {
+    custom_duty_drawback(frm, cdt, cdn) {
         let row = locals[cdt][cdn];
         if (!row.item_code || !frm.doc.custom_sub_items) return;
 
@@ -353,7 +353,7 @@ frappe.ui.form.on("Sales Invoice Item", {
                     sub.doctype,
                     sub.name,
                     "duty_drawback",
-                    row.duty_drawback
+                    row.custom_duty_drawback
                 );
             }
         });
@@ -387,7 +387,7 @@ frappe.ui.form.on("Sales Invoice Item", {
                             sub_row.sub_item_code = sub_item.sub_item_code;
                             sub_row.sub_item_name = sub_item.sub_item_name;
                             sub_row.sub_description = sub_item.sub_description;
-                            sub_row.duty_drawback = row.duty_drawback;
+                            sub_row.duty_drawback = row.custom_duty_drawback;
                         });
 
                         frm.refresh_field('custom_sub_items');
