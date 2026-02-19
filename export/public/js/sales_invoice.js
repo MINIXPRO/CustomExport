@@ -702,6 +702,7 @@ function toggle_export_fields_si(frm) {
     frm.refresh_field("items");
 }
 
+//override sales invoice item table 
 
 frappe.ui.form.on("Sales Invoice Item", {
     items_add(frm) {
