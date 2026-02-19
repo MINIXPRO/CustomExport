@@ -128,6 +128,7 @@ function carry_forward_sub_items(frm) {
                         new_sub.custom__cif_total_amount = sub_item.custom__cif_total_amount;
                         new_sub.custom_cif_unit_price_ = sub_item.custom_cif_unit_price_;
                         new_sub.custom___cif_total_amount = sub_item.custom___cif_total_amount;
+                        new_sub.custom_duty_drawback = sub_item.custom_duty_drawback;
                     });
                     frm.refresh_field('custom_sub_items');
                 }
@@ -135,6 +136,8 @@ function carry_forward_sub_items(frm) {
         });
     }
 }
+
+
 
 
 function apply_parent_values_from_sub_items(frm) {
@@ -316,6 +319,22 @@ frappe.ui.form.on("Sales Invoice Item", {
 
     custom_freight__insurance_(frm, cdt, cdn) {
         calculate_cif_values(frm, cdt, cdn);
+    },
+    
+    custom_duty_drawback(frm, cdt, cdn) {
+        let row = locals[cdt][cdn];
+        if (!row.item_code || !frm.doc.custom_sub_items) return;
+
+        frm.doc.custom_sub_items.forEach(sub => {
+            if (sub.parent_item === row.item_code) {
+                frappe.model.set_value(
+                    sub.doctype,
+                    sub.name,
+                    "custom_duty_drawback",
+                    row.custom_duty_drawback
+                );
+            }
+        });
     },
 
     item_code(frm, cdt, cdn) {
