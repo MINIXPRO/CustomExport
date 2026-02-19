@@ -62,8 +62,8 @@ frappe.ui.form.on("Sales Invoice", {
                         frappe.model.set_value(
                             sub.doctype,
                             sub.name,
-                            "custom_duty_drawback",
-                            item.custom_duty_drawback
+                            "duty_drawback",
+                            item.duty_drawback
                         );
                     }
                 });
@@ -147,7 +147,8 @@ function carry_forward_sub_items(frm) {
                         new_sub.custom__cif_total_amount = sub_item.custom__cif_total_amount;
                         new_sub.custom_cif_unit_price_ = sub_item.custom_cif_unit_price_;
                         new_sub.custom___cif_total_amount = sub_item.custom___cif_total_amount;
-                        new_sub.custom_duty_drawback = sub_item.custom_duty_drawback;
+                        new_sub.duty_drawback = sub_item.duty_drawback
+;
                     });
                     frm.refresh_field('custom_sub_items');
                 }
@@ -240,6 +241,7 @@ function toggle_sub_items_columns(frm) {
     if (is_export) {
         // Display columns for Export order type
         columns_to_show = [
+            { fieldname: 'duty_drawback', columns: 1 },
             { fieldname: 'parent_item', columns: 1 },
             { fieldname: 'sub_item_code', columns: 1 },
             { fieldname: 'qty', columns: 1 },
@@ -247,7 +249,6 @@ function toggle_sub_items_columns(frm) {
             { fieldname: 'amount', columns: 1 },
             { fieldname: 'custom_net_weight', columns: 1 },
             { fieldname: 'custom_freight__insurance_', columns: 1 },
-            { fieldname: 'custom_duty_drawback', columns: 1 },
             { fieldname: 'custom_cif_unit_price_', columns: 1 },
             { fieldname: 'custom___cif_total_amount', columns: 1 }
         ];
@@ -263,8 +264,8 @@ function toggle_sub_items_columns(frm) {
         frappe.model.user_settings.save(frm.doctype, 'GridView', value).then((r) => {
             frappe.model.user_settings[frm.doctype] = r.message || r;
             grid.reset_grid();
-            grid.update_docfield_property('custom_duty_drawback', 'hidden', 0);
-            grid.update_docfield_property('custom_duty_drawback', 'in_list_view', 1);
+            grid.update_docfield_property('duty_drawback', 'hidden', 0);
+            grid.update_docfield_property('duty_drawback', 'in_list_view', 1);
             frm.refresh_field("custom_sub_items");
         });
 
@@ -285,7 +286,7 @@ function toggle_export_fields(frm) {
     if (is_export) {
         // Display columns for Export order type
         columns_to_show = [
-            { fieldname: 'custom_duty_drawback', columns: 1 },
+            { fieldname: 'duty_drawback', columns: 1 },
             { fieldname: 'item_code', columns: 1 },
             { fieldname: 'qty', columns: 1 },
             { fieldname: 'rate', columns: 1 },
@@ -342,7 +343,7 @@ frappe.ui.form.on("Sales Invoice Item", {
         calculate_cif_values(frm, cdt, cdn);
     },
     
-    custom_duty_drawback(frm, cdt, cdn) {
+    duty_drawback(frm, cdt, cdn) {
         let row = locals[cdt][cdn];
         if (!row.item_code || !frm.doc.custom_sub_items) return;
 
@@ -351,8 +352,8 @@ frappe.ui.form.on("Sales Invoice Item", {
                 frappe.model.set_value(
                     sub.doctype,
                     sub.name,
-                    "custom_duty_drawback",
-                    row.custom_duty_drawback
+                    "duty_drawback",
+                    row.duty_drawback
                 );
             }
         });
@@ -386,7 +387,7 @@ frappe.ui.form.on("Sales Invoice Item", {
                             sub_row.sub_item_code = sub_item.sub_item_code;
                             sub_row.sub_item_name = sub_item.sub_item_name;
                             sub_row.sub_description = sub_item.sub_description;
-                            sub_row.custom_duty_drawback = row.custom_duty_drawback;
+                            sub_row.duty_drawback = row.duty_drawback;
                         });
 
                         frm.refresh_field('custom_sub_items');
