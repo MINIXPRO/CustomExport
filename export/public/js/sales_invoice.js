@@ -39,7 +39,7 @@ frappe.ui.form.on("Sales Invoice", {
         // Recalculate all sub-item values first
         if (frm.doc.custom_sub_items) {
             frm.doc.custom_sub_items.forEach(row => {
-                calculate_sub_item_cif_values(frm, 'Sales Invoice Sub Item', row.name);
+                calculate_sub_item_cif_values(frm, 'Sales Invoice Sub Items', row.name);
             });
         }
 
@@ -51,6 +51,25 @@ frappe.ui.form.on("Sales Invoice", {
             add_bank_charges_item(frm);
             hide_items_rows(frm);
         }
+
+        // 🔁 Re-apply Duty Drawback from parent items to sub-items before save
+        if (frm.doc.items && frm.doc.custom_sub_items) {
+            frm.doc.items.forEach(item => {
+                if (!item.item_code) return;
+
+                frm.doc.custom_sub_items.forEach(sub => {
+                    if (sub.parent_item === item.item_code) {
+                        frappe.model.set_value(
+                            sub.doctype,
+                            sub.name,
+                            "custom_duty_drawback",
+                            item.custom_duty_drawback
+                        );
+                    }
+                });
+            });
+        }
+        frm.refresh_field("custom_sub_items");
     },
 
     onload_post_render(frm) {
@@ -244,6 +263,8 @@ function toggle_sub_items_columns(frm) {
         frappe.model.user_settings.save(frm.doctype, 'GridView', value).then((r) => {
             frappe.model.user_settings[frm.doctype] = r.message || r;
             grid.reset_grid();
+            grid.update_docfield_property('custom_duty_drawback', 'hidden', 0);
+            grid.update_docfield_property('custom_duty_drawback', 'in_list_view', 1);
             frm.refresh_field("custom_sub_items");
         });
 
