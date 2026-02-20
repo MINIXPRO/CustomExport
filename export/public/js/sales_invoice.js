@@ -52,23 +52,6 @@ frappe.ui.form.on("Sales Invoice", {
             hide_items_rows(frm);
         }
 
-        // 🔁 Re-apply Duty Drawback from parent items to sub-items before save
-        if (frm.doc.items && frm.doc.custom_sub_items) {
-            frm.doc.items.forEach(item => {
-                if (!item.item_code) return;
-
-                frm.doc.custom_sub_items.forEach(sub => {
-                    if (sub.parent_item === item.item_code) {
-                        frappe.model.set_value(
-                            sub.doctype,
-                            sub.name,
-                            "duty_drawback",
-                            item.custom_duty_drawback
-                        );
-                    }
-                });
-            });
-        }
         frm.refresh_field("custom_sub_items");
     },
 
@@ -343,21 +326,6 @@ frappe.ui.form.on("Sales Invoice Item", {
         calculate_cif_values(frm, cdt, cdn);
     },
     
-    custom_duty_drawback(frm, cdt, cdn) {
-        let row = locals[cdt][cdn];
-        if (!row.item_code || !frm.doc.custom_sub_items) return;
-
-        frm.doc.custom_sub_items.forEach(sub => {
-            if (sub.parent_item === row.item_code) {
-                frappe.model.set_value(
-                    sub.doctype,
-                    sub.name,
-                    "duty_drawback",
-                    row.custom_duty_drawback
-                );
-            }
-        });
-    },
 
     item_code(frm, cdt, cdn) {
         let row = locals[cdt][cdn];
@@ -387,7 +355,6 @@ frappe.ui.form.on("Sales Invoice Item", {
                             sub_row.sub_item_code = sub_item.sub_item_code;
                             sub_row.sub_item_name = sub_item.sub_item_name;
                             sub_row.sub_description = sub_item.sub_description;
-                            sub_row.duty_drawback = row.custom_duty_drawback;
                         });
 
                         frm.refresh_field('custom_sub_items');
