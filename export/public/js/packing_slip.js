@@ -24,6 +24,17 @@ frappe.ui.form.on("Packing Slip", {
         }
     },
 
+    onload(frm) {
+        if (frm.doc.delivery_note) {
+            frappe.db.get_doc("Delivery Note", frm.doc.delivery_note).then(dn => {
+                frm.set_value("conversion_rate", dn.conversion_rate);
+
+                // IMPORTANT: refresh items so currency symbol updates
+                frm.refresh_field("items");
+            });
+        }
+    },
+
     custom_order_type(frm) {
         toggle_export_fields(frm);
         toggle_sub_items_columns(frm);
@@ -73,6 +84,9 @@ function carry_forward_sub_items(frm) {
                 name: delivery_note_ref
             },
             callback: function(r) {
+                    // Copy currency from Delivery Note
+                frm.set_value("conversion_rate", r.message.conversion_rate);
+                frm.refresh_field("items");
                 if (r.message && r.message.custom_sub_items && r.message.custom_sub_items.length > 0) {
                     frm.doc.custom_sub_items = [];
                     r.message.custom_sub_items.forEach(function(sub_item) {
@@ -497,6 +511,9 @@ function calculate_ps_cif_totals(frm) {
     let total_currency = 0;
 
     (frm.doc.items || []).forEach(row => {
+
+        if (row.item_code === "Bank Charges") return;
+
         total_company += flt(row.custom__cif_total_amount);
         total_currency += flt(row.custom___cif_total_amount);
     });
