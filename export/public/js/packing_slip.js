@@ -30,7 +30,7 @@ frappe.ui.form.on("Packing Slip", {
         calculate_ps_cif_totals(frm);
     },
 
-    currency(frm) {
+    custom_currency(frm) {
         toggle_cif_total_by_currency(frm);
         calculate_ps_cif_totals(frm);
     },
@@ -39,7 +39,7 @@ frappe.ui.form.on("Packing Slip", {
         // Recalculate all sub-item values first
         if (frm.doc.custom_sub_items) {
             frm.doc.custom_sub_items.forEach(row => {
-                calculate_sub_item_cif_values(frm, 'Packing Slip Sub Item', row.name);
+                calculate_sub_item_cif_values(frm, 'Packing Slip Sub Items', row.name);
             });
         }
 
@@ -52,13 +52,15 @@ frappe.ui.form.on("Packing Slip", {
     onload_post_render(frm) {
         toggle_export_fields(frm);
         toggle_sub_items_columns(frm);
+
+        set_currency(frm);
+
         carry_forward_sub_items(frm);
-        set_items_currency(frm);
         hide_items_rows(frm);
     }
 });
 
-function set_items_currency(frm) {
+function set_currency(frm) {
 
     if (!frm.doc.delivery_note) return;
 
@@ -68,6 +70,8 @@ function set_items_currency(frm) {
         if (!r.message) return;
 
         let currency = r.message.currency;
+
+        frm.set_value("custom_currency", currency);
 
         (frm.doc.items || []).forEach(row => {
             frappe.model.set_value(row.doctype, row.name, "custom_currency", currency);
@@ -158,7 +162,7 @@ function apply_parent_values_from_sub_items(frm) {
         }
     });
 
-    let conversion_rate = flt(frm.doc.conversion_rate);
+    let conversion_rate = flt(frm.doc.conversion_rate) || 1;
     if (!conversion_rate) conversion_rate = 1;
 
     (frm.doc.items || []).forEach(row => {
