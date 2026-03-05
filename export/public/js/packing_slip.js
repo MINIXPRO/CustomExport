@@ -88,10 +88,11 @@ function carry_forward_sub_items(frm) {
                         new_sub.rate = sub_item.rate;
                         new_sub.amount = sub_item.amount;
                         new_sub.custom_freight__insurance_ = sub_item.custom_freight__insurance_;
-                        new_sub.custom_cif_unit_price = sub_item.custom_cif_unit_price;
-                        new_sub.custom__cif_total_amount = sub_item.custom__cif_total_amount;
-                        new_sub.custom_cif_unit_price_ = sub_item.custom_cif_unit_price_;
-                        new_sub.custom___cif_total_amount = sub_item.custom___cif_total_amount;
+                        calculate_sub_item_cif_values(frm, "Packing Slip Sub Items", new_sub.name);
+                        // new_sub.custom_cif_unit_price = sub_item.custom_cif_unit_price;
+                        // new_sub.custom__cif_total_amount = sub_item.custom__cif_total_amount;
+                        // new_sub.custom_cif_unit_price_ = sub_item.custom_cif_unit_price_;
+                        // new_sub.custom___cif_total_amount = sub_item.custom___cif_total_amount;
                     });
                     frm.refresh_field('custom_sub_items');
                 }
