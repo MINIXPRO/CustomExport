@@ -6,6 +6,7 @@ frappe.ui.form.on("Packing Slip", {
         toggle_export_fields(frm);
         toggle_cif_total_by_currency(frm);
         toggle_sub_items_columns(frm);
+        hide_items_rows(frm);
 
         // Sub-items table configuration (only if field exists)
         if (frm.fields_dict.custom_sub_items) {
@@ -44,12 +45,15 @@ frappe.ui.form.on("Packing Slip", {
 
         apply_parent_values_from_sub_items(frm);
         calculate_ps_cif_totals(frm);
+
+        hide_items_rows(frm);
     },
 
     onload_post_render(frm) {
         toggle_export_fields(frm);
         toggle_sub_items_columns(frm);
         carry_forward_sub_items(frm);
+        hide_items_rows(frm);
     }
 });
 
@@ -206,6 +210,28 @@ function toggle_sub_items_columns(frm) {
 
 }
 
+/************************************
+ * HIDE Bank Charges (ITEMS)
+ ************************************/
+
+function hide_items_rows(frm) {
+    const grid = frm.fields_dict?.items?.grid;
+    if (!grid) return;
+
+    const hide = () => {
+        const rows = grid.grid_rows || [];
+        if (!rows.length) return;
+
+        rows.forEach((row) => {
+            if (row?.doc?.item_code === "Bank Charges") {
+                row.wrapper.hide();
+            }
+        });
+    };
+
+    setTimeout(hide, 0);
+}
+
 
 /************************************
  * SHOW / HIDE EXPORT FIELDS (ITEMS)
@@ -249,6 +275,7 @@ function toggle_export_fields(frm) {
             frappe.model.user_settings[frm.doctype] = r.message || r;
             grid.reset_grid();
             frm.refresh_field("items");
+            hide_items_rows(frm);
         });
 
     } catch (e) {
@@ -339,6 +366,10 @@ frappe.ui.form.on("Packing Slip Item", {
             // Toggle visibility after removal
             // toggle_sub_items_table_visibility(frm);
         }
+    },
+
+    form_render(frm) {
+        hide_items_rows(frm);
     }
 });
 
