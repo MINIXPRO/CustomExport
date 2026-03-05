@@ -53,9 +53,30 @@ frappe.ui.form.on("Packing Slip", {
         toggle_export_fields(frm);
         toggle_sub_items_columns(frm);
         carry_forward_sub_items(frm);
+        set_items_currency(frm);
         hide_items_rows(frm);
     }
 });
+
+function set_items_currency(frm) {
+
+    if (!frm.doc.delivery_note) return;
+
+    frappe.db.get_value("Delivery Note", frm.doc.delivery_note, "currency")
+    .then(r => {
+
+        if (!r.message) return;
+
+        let currency = r.message.currency;
+
+        (frm.doc.items || []).forEach(row => {
+            frappe.model.set_value(row.doctype, row.name, "custom_currency", currency);
+        });
+
+        frm.refresh_field("items");
+
+    });
+}
 
 
 function carry_forward_sub_items(frm) {
@@ -89,6 +110,7 @@ function carry_forward_sub_items(frm) {
                         new_sub.rate = sub_item.rate;
                         new_sub.amount = sub_item.amount;
                         new_sub.custom_freight__insurance_ = sub_item.custom_freight__insurance_;
+                        frappe.model.set_value(new_sub.doctype, new_sub.name, "custom_currency", r.message.currency);
                         calculate_sub_item_cif_values(frm, "Packing Slip Sub Items", new_sub.name);
                         // new_sub.custom_cif_unit_price = sub_item.custom_cif_unit_price;
                         // new_sub.custom__cif_total_amount = sub_item.custom__cif_total_amount;
@@ -136,7 +158,8 @@ function apply_parent_values_from_sub_items(frm) {
         }
     });
 
-    let conversion_rate = flt(frm.doc.conversion_rate) || 1;
+    let conversion_rate = flt(frm.doc.conversion_rate);
+    if (!conversion_rate) conversion_rate = 1;
 
     (frm.doc.items || []).forEach(row => {
         let group = grouped[row.item_code];
@@ -168,8 +191,7 @@ function apply_parent_values_from_sub_items(frm) {
 
 
 function toggle_cif_total_by_currency(frm) {
-    const show = frm.doc.currency !== "INR";
-    frm.toggle_display("custom_cif_total_amount_", show);
+    frm.toggle_display("custom_cif_total_amount_", true);
 }
 
 
