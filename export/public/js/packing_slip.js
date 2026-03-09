@@ -283,8 +283,8 @@ function toggle_export_fields(frm) {
             { fieldname: 'custom_length', columns: 1 },
             { fieldname: 'custom_width', columns: 1 },
             { fieldname: 'custom_height', columns: 1 },
-            { fieldname: 'custom_cubic_meter', columns: 1 },
             { fieldname: 'custom_cubic_feet', columns: 1 },
+            { fieldname: 'custom_cubic_meter', columns: 1 },
         ];
     } else {
         // Reset to default columns for non-Export order types
@@ -297,8 +297,8 @@ function toggle_export_fields(frm) {
             { fieldname: 'custom_length', columns: 1 },
             { fieldname: 'custom_width', columns: 1 },
             { fieldname: 'custom_height', columns: 1 },
-            { fieldname: 'custom_cubic_meter', columns: 1 },
             { fieldname: 'custom_cubic_feet', columns: 1 },
+            { fieldname: 'custom_cubic_meter', columns: 1 },
         ];
     }
 
@@ -403,6 +403,18 @@ frappe.ui.form.on("Packing Slip Item", {
         }
     },
 
+    custom_length(frm, cdt, cdn) {
+        calculate_cubic(frm, cdt, cdn);
+    },
+
+    custom_width(frm, cdt, cdn) {
+        calculate_cubic(frm, cdt, cdn);
+    },
+
+    custom_height(frm, cdt, cdn) {
+        calculate_cubic(frm, cdt, cdn);
+    },
+
     form_render(frm) {
         hide_items_rows(frm);
     }
@@ -424,6 +436,23 @@ frappe.ui.form.on("Packing Slip Sub Items", {
         calculate_sub_item_cif_values(frm, cdt, cdn);
     }
 });
+
+
+/************************************
+ * CUBIC FEET / CUBIC METER CALCULATION
+ ************************************/
+function calculate_cubic(frm, cdt, cdn) {
+    let row = locals[cdt][cdn];
+    let l = flt(row.custom_length);
+    let w = flt(row.custom_width);
+    let h = flt(row.custom_height);
+
+    let cubic_feet = 0.00058 * l * w * h;
+    let cubic_meter = 0.0283 * cubic_feet;
+
+    frappe.model.set_value(cdt, cdn, "custom_cubic_feet", cubic_feet);
+    frappe.model.set_value(cdt, cdn, "custom_cubic_meter", cubic_meter);
+}
 
 
 /************************************
