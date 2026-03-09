@@ -977,7 +977,7 @@
    "description": null,
    "docstatus": 0,
    "dt": "Packing Slip Item",
-   "fetch_from": null,
+   "fetch_from": "item_code.weight_per_unit",
    "fetch_if_empty": 0,
    "fieldname": "custom_net_weight",
    "fieldtype": "Float",
