@@ -254,24 +254,22 @@ function toggle_export_fields(frm) {
     if (is_export) {
         // Display columns for Export order type
         columns_to_show = [
-            { fieldname: 'custom_duty_drawback', columns: 1 },
-            { fieldname: 'item_code', columns: 1 },
+            { fieldname: 'custom_customer_order_number', columns: 1 },
+            { fieldname: 'custom_sales_order_no', columns: 1 },
+            { fieldname: 'item_code', columns: 2 },
+            { fieldname: 'description', columns: 2 },
             { fieldname: 'qty', columns: 1 },
-            { fieldname: 'rate', columns: 1 },
-            { fieldname: 'amount', columns: 1 },
             { fieldname: 'custom_net_weight', columns: 1 },
-            { fieldname: 'custom_freight__insurance_', columns: 1 },
-            { fieldname: 'custom_cif_unit_price_', columns: 1 },
-            { fieldname: 'custom___cif_total_amount', columns: 1 }
         ];
     } else {
         // Reset to default columns for non-Export order types
         columns_to_show = [
+            { fieldname: 'custom_customer_order_number', columns: 1 },
+            { fieldname: 'custom_sales_order_no', columns: 1 },
             { fieldname: 'item_code', columns: 2 },
+            { fieldname: 'description', columns: 2 },
             { fieldname: 'delivery_date', columns: 2 },
-            { fieldname: 'qty', columns: 2 },
-            { fieldname: 'rate', columns: 2 },
-            { fieldname: 'amount', columns: 2 }
+            { fieldname: 'amount', columns: 1 }
         ];
     }
 
