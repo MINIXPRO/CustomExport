@@ -274,4 +274,9 @@ override_whitelisted_methods = {
     # Override Delivery Note → Packing Slip mapping to carry forward custom fields
     "erpnext.stock.doctype.delivery_note.delivery_note.make_packing_slip":
         "export.api.packing_slip.make_packing_slip_custom",
+
+    # Override Delivery Note → Sales Invoice to merge split qty-1 rows back into
+    # consolidated lines before the invoice is created
+    "erpnext.stock.doctype.delivery_note.delivery_note.make_sales_invoice":
+        "export.api.delivery_note_to_si.make_sales_invoice_custom",
 }
