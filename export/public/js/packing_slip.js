@@ -7,6 +7,7 @@ frappe.ui.form.on("Packing Slip", {
         toggle_cif_total_by_currency(frm);
         toggle_sub_items_columns(frm);
         hide_items_rows(frm);
+        recalculate_all_cubic_rows(frm);
 
         // Sub-items table configuration (only if field exists)
         if (frm.fields_dict.custom_sub_items) {
@@ -45,6 +46,7 @@ frappe.ui.form.on("Packing Slip", {
 
         apply_parent_values_from_sub_items(frm);
         calculate_ps_cif_totals(frm);
+        recalculate_all_cubic_rows(frm);
 
         hide_items_rows(frm);
     },
@@ -57,6 +59,7 @@ frappe.ui.form.on("Packing Slip", {
 
         carry_forward_sub_items(frm);
         hide_items_rows(frm);
+        recalculate_all_cubic_rows(frm);
     }
 });
 
@@ -441,6 +444,12 @@ frappe.ui.form.on("Packing Slip Sub Items", {
 /************************************
  * CUBIC FEET / CUBIC METER CALCULATION
  ************************************/
+function recalculate_all_cubic_rows(frm) {
+    (frm.doc.items || []).forEach(row => {
+        calculate_cubic(frm, row.doctype, row.name);
+    });
+}
+
 function calculate_cubic(frm, cdt, cdn) {
     let row = locals[cdt][cdn];
     let l = flt(row.custom_length);
