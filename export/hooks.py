@@ -258,6 +258,12 @@ doctype_js = {
 }
 
 
+doc_events = {
+    "Item": {
+        "before_save": "export.api.item.before_save",
+    }
+}
+
 override_whitelisted_methods = {
     "erpnext.selling.doctype.sales_order.sales_order.make_sales_invoice":
         "export.config.py.sales_order.make_sales_invoice_custom",
