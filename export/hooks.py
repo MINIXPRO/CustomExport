@@ -263,5 +263,9 @@ override_whitelisted_methods = {
         "export.config.py.sales_order.make_sales_invoice_custom",
 
     "erpnext.selling.doctype.sales_order.sales_order.make_delivery_note":
-        "export.config.py.sales_order.make_delivery_note_custom"
+        "export.config.py.sales_order.make_delivery_note_custom",
+
+    # Override Delivery Note → Packing Slip mapping to carry forward custom fields
+    "erpnext.stock.doctype.delivery_note.delivery_note.make_packing_slip":
+        "export.api.packing_slip.make_packing_slip_custom",
 }

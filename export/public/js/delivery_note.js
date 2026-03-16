@@ -8,6 +8,8 @@ frappe.ui.form.on("Delivery Note", {
         toggle_sub_items_columns(frm);
         hide_items_rows(frm);
 
+        setup_items_grid_template_buttons(frm);
+
         // Sub-items table configuration (only if field exists)
         if (frm.fields_dict.custom_sub_items) {
             frm.fields_dict.custom_sub_items.grid.cannot_add_rows = true;
@@ -79,6 +81,125 @@ function hide_items_rows(frm) {
 
     // Grid can re-render after refresh/reset, so defer once
     setTimeout(hide, 0);
+}
+
+
+/************************************
+ * ITEMS GRID – CUSTOM TEMPLATE BUTTONS
+ * Replaces the standard Download/Upload template actions
+ * with custom ones injected into the child-table footer.
+ ************************************/
+function setup_items_grid_template_buttons(frm) {
+    const grid = frm.fields_dict?.items?.grid;
+    if (!grid) return;
+
+    setTimeout(() => {
+        const $wrapper = $(grid.wrapper);
+
+        // --- Hide standard template buttons (grid footer + page-level menus) ---
+        $wrapper.find('.grid-download, .grid-upload').hide();
+        $wrapper.find('[data-label="Download"], [data-label="Upload"]')
+            .closest('li').hide();
+        frm.page.wrapper
+            .find('.dropdown-menu [data-label="Download"], .dropdown-menu [data-label="Upload"]')
+            .closest('li').hide();
+
+        // --- Inject custom buttons once (guard against re-render duplicates) ---
+        if ($wrapper.find('.custom-dn-template-btns').length) return;
+
+        const $custom = $('<div class="custom-dn-template-btns flex gap-2"></div>');
+
+        $custom.append(
+            $('<button class="btn btn-xs btn-secondary">')
+                .text(__('Download Template'))
+                .on('click', () => {
+                    const dn = encodeURIComponent(frm.doc.name || '');
+                    const url = frappe.urllib.get_full_url(
+                        '/api/method/export.api.delivery_note_template.get_delivery_note_custom_template'
+                        + (dn ? `?delivery_note=${dn}` : '')
+                    );
+                    window.open(url, '_blank');
+                })
+        );
+
+        $custom.append(
+            $('<button class="btn btn-xs btn-secondary">')
+                .text(__('Upload Template'))
+                .on('click', () => show_upload_dialog(frm))
+        );
+
+        // Place custom buttons in the same container as the standard template buttons.
+        // Frappe puts .grid-download / .grid-upload in a sibling div of .grid-buttons.
+        const $downloadBtn = $wrapper.find('.grid-download');
+        if ($downloadBtn.length) {
+            $downloadBtn.parent().append($custom);
+        } else {
+            // Fallback: append to the grid footer itself
+            $wrapper.find('.grid-footer').append($custom);
+        }
+    }, 400);
+}
+
+
+/************************************
+ * UPLOAD TEMPLATE DIALOG
+ ************************************/
+function show_upload_dialog(frm) {
+    const d = new frappe.ui.Dialog({
+        title: __('Upload Custom Template'),
+        fields: [
+            {
+                label: __('File (.xlsx or .csv)'),
+                fieldname: 'template_file',
+                fieldtype: 'Attach',
+                reqd: 1,
+                description: __(
+                    'Upload the filled custom template. ' +
+                    'Row 1 = labels, Row 2 = fieldnames, Row 3+ = data. ' +
+                    'Each data row updates the matching Delivery Note Item by item_code.'
+                )
+            }
+        ],
+        primary_action_label: __('Import'),
+        primary_action(values) {
+            if (!values.template_file) {
+                frappe.msgprint(__('Please attach a file first.'));
+                return;
+            }
+
+            const ext = values.template_file.split('.').pop().toLowerCase();
+            if (!['xlsx', 'csv'].includes(ext)) {
+                frappe.msgprint(__('Only .xlsx and .csv files are supported.'));
+                return;
+            }
+
+            d.set_df_property('template_file', 'read_only', 1);
+            d.get_primary_btn().prop('disabled', true).text(__('Importing…'));
+
+            frappe.call({
+                method: 'export.api.delivery_note_template.import_delivery_note_items',
+                args: {
+                    delivery_note: frm.doc.name,
+                    file_url: values.template_file
+                },
+                callback(r) {
+                    d.hide();
+                    if (r.message) {
+                        frappe.show_alert({
+                            message: __(r.message.message),
+                            indicator: 'green'
+                        }, 6);
+                        frm.reload_doc();
+                    }
+                },
+                error() {
+                    d.set_df_property('template_file', 'read_only', 0);
+                    d.get_primary_btn().prop('disabled', false).text(__('Import'));
+                }
+            });
+        }
+    });
+    d.show();
 }
 
 
