@@ -47,10 +47,11 @@ frappe.ui.form.on("Sales Invoice", {
         calculate_si_cif_totals(frm);
 
         // Add Bank Charges item at the end when order type is Export
-        if (frm.doc.custom_order_type === "Export") {
-            add_bank_charges_item(frm);
-            hide_items_rows(frm);
-        }
+        // Commented out: reverting CIF difference adjustment via Bank Charges
+        // if (frm.doc.custom_order_type === "Export") {
+        //     add_bank_charges_item(frm);
+        //     hide_items_rows(frm);
+        // }
 
         frm.refresh_field("custom_sub_items");
     },

@@ -17,7 +17,7 @@
    "field_name": "rate",
    "idx": 0,
    "is_system_generated": 1,
-   "modified": "2026-03-11 14:16:41.831896",
+   "modified": "2026-03-17 10:23:33.233659",
    "modified_by": "Administrator",
    "module": null,
    "name": "Packed Item-rate-read_only",
