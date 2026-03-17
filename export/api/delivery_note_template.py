@@ -177,9 +177,13 @@ def import_delivery_note_items(delivery_note, file_url):
 
     usage_counter = defaultdict(int)
     updated_count = 0
+    created_count = 0
 
-    # Fields that must never be overwritten during import
-    PROTECTED = {"item_code", "name", "parent", "parenttype", "parentfield", "idx"}
+    # Fields that must never be overwritten on EXISTING rows during import.
+    # For NEW rows appended by this import, item_code IS writable (it identifies the item).
+    PROTECTED_EXISTING = {"item_code", "name", "parent", "parenttype", "parentfield", "idx"}
+    # Frappe internals that must never be set even on brand-new child rows.
+    PROTECTED_NEW      = {"name", "parent", "parenttype", "parentfield"}
 
     for data_row in data_rows:
         # Skip entirely blank rows
@@ -193,33 +197,54 @@ def import_delivery_note_items(delivery_note, file_url):
                 continue
             row_data[fn] = data_row[col_idx] if col_idx < len(data_row) else None
 
-        # Match to existing DN item by item_code
+        # item_code is required to identify / create a row
         item_code = str(row_data.get("item_code") or "").strip()
         if not item_code:
             continue
 
         candidates = dn_item_map.get(item_code, [])
         idx = usage_counter[item_code]
-        if idx >= len(candidates):
-            continue  # No matching row in DN – skip
 
-        dn_item = candidates[idx]
+        if idx < len(candidates):
+            # ── Update existing DN item ──────────────────────────────────────
+            dn_item   = candidates[idx]
+            protected = PROTECTED_EXISTING
+            is_new    = False
+        else:
+            # ── No matching existing row → append a new child row ────────────
+            dn_item   = dn.append("items", {})
+            protected = PROTECTED_NEW
+            is_new    = True
+
         usage_counter[item_code] += 1
 
         # Apply values
         for fn, value in row_data.items():
-            if fn in PROTECTED:
+            if fn in protected:
                 continue
             if not hasattr(dn_item, fn):
                 continue
             setattr(dn_item, fn, None if (value is None or str(value).strip() == "") else value)
 
-        updated_count += 1
+        if is_new:
+            created_count += 1
+        else:
+            updated_count += 1
 
+    total = updated_count + created_count
     dn.save(ignore_permissions=True)
     frappe.db.commit()
 
+    parts = []
+    if updated_count:
+        parts.append(f"updated {updated_count}")
+    if created_count:
+        parts.append(f"created {created_count} new")
+    summary = " and ".join(parts) or "processed 0"
+
     return {
         "updated": updated_count,
-        "message": f"Successfully updated {updated_count} item row(s) in {delivery_note}.",
+        "created": created_count,
+        "total":   total,
+        "message": f"Successfully {summary} item row(s) in {delivery_note}.",
     }
