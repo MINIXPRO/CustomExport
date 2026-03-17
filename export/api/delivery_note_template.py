@@ -88,15 +88,19 @@ def get_delivery_note_custom_template(delivery_note=None):
     ws.row_dimensions[1].height = 30
     ws.row_dimensions[2].height = 22
 
-    # Fill existing item data when a Delivery Note name is supplied
+    # Fill existing item data when a saved Delivery Note name is supplied.
+    # Gracefully skip if the document doesn't exist yet (new/unsaved doc).
     if delivery_note:
-        dn = frappe.get_doc("Delivery Note", delivery_note)
-        for item in dn.items:
-            row = []
-            for _, fn in TEMPLATE_FIELDS:
-                val = getattr(item, fn, None)
-                row.append("" if val is None else val)
-            ws.append(row)
+        try:
+            dn = frappe.get_doc("Delivery Note", delivery_note)
+            for item in dn.items:
+                row = []
+                for _, fn in TEMPLATE_FIELDS:
+                    val = getattr(item, fn, None)
+                    row.append("" if val is None else val)
+                ws.append(row)
+        except frappe.DoesNotExistError:
+            pass  # Unsaved / new doc – return blank template with headers only
 
     output = io.BytesIO()
     wb.save(output)

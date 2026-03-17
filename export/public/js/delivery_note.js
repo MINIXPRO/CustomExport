@@ -114,7 +114,11 @@ function setup_items_grid_template_buttons(frm) {
             $('<button class="btn btn-xs btn-secondary">')
                 .text(__('Download Template'))
                 .on('click', () => {
-                    const dn = encodeURIComponent(frm.doc.name || '');
+                    // Do not pass delivery_note for new/unsaved docs – the record
+                    // does not exist in DB yet, so the backend would 404.
+                    const dn = (!frm.is_new() && frm.doc.name)
+                        ? encodeURIComponent(frm.doc.name)
+                        : '';
                     const url = frappe.urllib.get_full_url(
                         '/api/method/export.api.delivery_note_template.get_delivery_note_custom_template'
                         + (dn ? `?delivery_note=${dn}` : '')
