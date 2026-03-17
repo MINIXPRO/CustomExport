@@ -90,20 +90,30 @@ function hide_items_rows(frm) {
  * Replaces the standard Download/Upload template actions
  * with custom ones injected into the child-table footer.
  ************************************/
+function _hide_standard_items_template_buttons(frm) {
+    const grid = frm.fields_dict?.items?.grid;
+    if (!grid) return;
+    const $wrapper = $(grid.wrapper);
+    $wrapper.find('.grid-download, .grid-upload').hide();
+    $wrapper.find('[data-label="Download"], [data-label="Upload"]')
+        .closest('li').hide();
+    frm.page.wrapper
+        .find('.dropdown-menu [data-label="Download"], .dropdown-menu [data-label="Upload"]')
+        .closest('li').hide();
+}
+
 function setup_items_grid_template_buttons(frm) {
     const grid = frm.fields_dict?.items?.grid;
     if (!grid) return;
 
+    // Hide standard buttons immediately (0 ms) so they never flash on initial load.
+    setTimeout(() => _hide_standard_items_template_buttons(frm), 0);
+
     setTimeout(() => {
         const $wrapper = $(grid.wrapper);
 
-        // --- Hide standard template buttons (grid footer + page-level menus) ---
-        $wrapper.find('.grid-download, .grid-upload').hide();
-        $wrapper.find('[data-label="Download"], [data-label="Upload"]')
-            .closest('li').hide();
-        frm.page.wrapper
-            .find('.dropdown-menu [data-label="Download"], .dropdown-menu [data-label="Upload"]')
-            .closest('li').hide();
+        // --- Hide standard template buttons again after grid fully renders ---
+        _hide_standard_items_template_buttons(frm);
 
         // --- Inject custom buttons once (guard against re-render duplicates) ---
         if ($wrapper.find('.custom-dn-template-btns').length) return;
@@ -408,6 +418,9 @@ function toggle_export_fields(frm) {
             grid.reset_grid();
             frm.refresh_field("items");
             hide_items_rows(frm);
+            // Re-hide standard buttons and re-inject custom buttons after grid reset.
+            // reset_grid() rebuilds the DOM, so both steps must run again.
+            setup_items_grid_template_buttons(frm);
         });
 
     } catch (e) {
