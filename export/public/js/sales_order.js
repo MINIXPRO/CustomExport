@@ -48,10 +48,11 @@ frappe.ui.form.on("Sales Order", {
         // Don't toggle fields during validate to avoid errors
 
         // Add Bank Charges item at the end when order type is Export
-        if (frm.doc.order_type === "Export") {
-            add_bank_charges_item(frm);
-            hide_items_rows(frm);
-        }
+        // Commented out: reverting CIF difference adjustment via Bank Charges
+        // if (frm.doc.order_type === "Export") {
+        //     add_bank_charges_item(frm);
+        //     hide_items_rows(frm);
+        // }
     },
     
     onload_post_render(frm) {

@@ -2696,7 +2696,7 @@
    "property": "depends_on",
    "property_type": "Data",
    "row_name": null,
-   "value": "eval:doc.custom_order_type != \"Export\""
+   "value": ""
   },
   {
    "_assign": null,
@@ -3018,7 +3018,7 @@
    "property": "depends_on",
    "property_type": "Data",
    "row_name": null,
-   "value": "eval:doc.custom_order_type != \"Export\""
+   "value": ""
   }
  ],
  "sync_on_migrate": 1
