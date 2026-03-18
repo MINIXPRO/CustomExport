@@ -320,7 +320,12 @@ frappe.ui.form.on("Sales Invoice Item", {
     },
 
     qty(frm, cdt, cdn) {
+        calculate_net_weight(frm, cdt, cdn);
         calculate_cif_values(frm, cdt, cdn);
+    },
+
+    weight_per_unit(frm, cdt, cdn) {
+        calculate_net_weight(frm, cdt, cdn);
     },
 
     custom_freight__insurance_(frm, cdt, cdn) {
@@ -365,6 +370,11 @@ frappe.ui.form.on("Sales Invoice Item", {
                         }, 3);
                     }
 
+                    // Recalculate net weight after weight_per_unit is fetched
+                    setTimeout(() => {
+                        calculate_net_weight(frm, cdt, cdn);
+                    }, 300);
+
                     // Toggle visibility after operation
                     // toggle_sub_items_table_visibility(frm);
                 }
@@ -408,6 +418,17 @@ frappe.ui.form.on("Sales Invoice Sub Items", {
         calculate_sub_item_cif_values(frm, cdt, cdn);
     }
 });
+
+
+/************************************
+ * NET WEIGHT CALCULATION
+ ************************************/
+function calculate_net_weight(frm, cdt, cdn) {
+    let row = locals[cdt][cdn];
+    let qty = flt(row.qty);
+    let weight_per_unit = flt(row.weight_per_unit);
+    frappe.model.set_value(cdt, cdn, "custom_net_weight", qty * weight_per_unit);
+}
 
 
 /************************************
