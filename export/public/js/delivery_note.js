@@ -442,7 +442,12 @@ frappe.ui.form.on("Delivery Note Item", {
     },
 
     qty(frm, cdt, cdn) {
+        calculate_net_weight(frm, cdt, cdn);
         calculate_cif_values(frm, cdt, cdn);
+    },
+
+    weight_per_unit(frm, cdt, cdn) {
+        calculate_net_weight(frm, cdt, cdn);
     },
 
     custom_freight__insurance_(frm, cdt, cdn) {
@@ -485,6 +490,21 @@ frappe.ui.form.on("Delivery Note Item", {
                             indicator: 'green'
                         }, 3);
                     }
+
+                    // Fetch Customer Part No from Item's customer_items table
+                    if (frm.doc.customer && r.message.customer_items && r.message.customer_items.length > 0) {
+                        let customer_item = r.message.customer_items.find(
+                            ci => ci.customer_name === frm.doc.customer
+                        );
+                        if (customer_item && customer_item.ref_code) {
+                            frappe.model.set_value(cdt, cdn, "custom_customer_part_no", customer_item.ref_code);
+                        }
+                    }
+
+                    // Recalculate net weight after weight_per_unit is fetched
+                    setTimeout(() => {
+                        calculate_net_weight(frm, cdt, cdn);
+                    }, 300);
 
                     // Toggle visibility after operation
                     // toggle_sub_items_table_visibility(frm);
@@ -531,6 +551,17 @@ frappe.ui.form.on("Delivery Note Sub Items", {
         calculate_sub_item_cif_values(frm, cdt, cdn);
     }
 });
+
+
+/************************************
+ * NET WEIGHT CALCULATION
+ ************************************/
+function calculate_net_weight(frm, cdt, cdn) {
+    let row = locals[cdt][cdn];
+    let qty = flt(row.qty);
+    let weight_per_unit = flt(row.weight_per_unit);
+    frappe.model.set_value(cdt, cdn, "custom_net_weight", qty * weight_per_unit);
+}
 
 
 /************************************

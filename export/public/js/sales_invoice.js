@@ -370,6 +370,16 @@ frappe.ui.form.on("Sales Invoice Item", {
                         }, 3);
                     }
 
+                    // Fetch Customer Part No from Item's customer_items table
+                    if (frm.doc.customer && r.message.customer_items && r.message.customer_items.length > 0) {
+                        let customer_item = r.message.customer_items.find(
+                            ci => ci.customer_name === frm.doc.customer
+                        );
+                        if (customer_item && customer_item.ref_code) {
+                            frappe.model.set_value(cdt, cdn, "custom_customer_part_no", customer_item.ref_code);
+                        }
+                    }
+
                     // Recalculate net weight after weight_per_unit is fetched
                     setTimeout(() => {
                         calculate_net_weight(frm, cdt, cdn);
