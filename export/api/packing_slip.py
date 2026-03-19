@@ -1,4 +1,5 @@
 import frappe
+from frappe.utils import flt
 
 
 # Parent-level fields to copy from Delivery Note → Packing Slip (same name on both).
@@ -48,7 +49,7 @@ ITEM_FIELD_REMAP = {
     "custom_customer_part_no":      "custom_customer_part_number",
     "actual_qty":                   "custom_total_available_quantity",
     "custom_net_weight":            "custom_unit_weight",
-    "custom_net_wt":                "net_weight",
+    # "custom_net_wt":                "net_weight",
     "custom_box_no":                "custom_box",
     "custom_gross_wt":              "custom__gross_weight",
     "custom_l":                     "custom_length",
@@ -56,8 +57,6 @@ ITEM_FIELD_REMAP = {
     "custom_h":                     "custom_height",
     "custom_vol_cuft":              "custom_cubic_feet",
     "custom_vol_cumtr":             "custom_cubic_meter",
-    # DN Item `rate` → PS Item `custom_rate` (PS Item has no standard rate field)
-    "rate":                         "custom_rate",
 }
 
 
@@ -109,5 +108,10 @@ def make_packing_slip_custom(source_name, target_doc=None):
         # Currency on each item row
         if hasattr(ps_item, "custom_currency"):
             ps_item.custom_currency = getattr(dn, "currency", None)
+
+        # Set net_weight to per-unit weight so standard calculate_net_total_pkg
+        # (which does net_weight × qty) gives the correct package total.
+        if hasattr(dn_item, "weight_per_unit"):
+            ps_item.net_weight = flt(dn_item.weight_per_unit)
 
     return doc

@@ -61,10 +61,6 @@ frappe.ui.form.on("Delivery Note", {
         toggle_sub_items_columns(frm);
         carry_forward_sub_items(frm);
         hide_items_rows(frm);
-        // Hide standard template buttons immediately on first render.
-        // toggle_export_fields is async so its reset_grid() can fire after
-        // the refresh-triggered setup; this adds an early hide pass.
-        setup_items_grid_template_buttons(frm);
     }
 });
 
@@ -144,13 +140,7 @@ function setup_items_grid_template_buttons(frm) {
         $custom.append(
             $('<button class="btn btn-xs btn-secondary">')
                 .text(__('Upload Template'))
-                .on('click', () => {
-                    if (frm.is_new()) {
-                        frappe.msgprint(__('Please save the Delivery Note before uploading the template.'));
-                        return;
-                    }
-                    show_upload_dialog(frm);
-                })
+                .on('click', () => show_upload_dialog(frm))
         );
 
         // Place custom buttons in the same container as the standard template buttons.

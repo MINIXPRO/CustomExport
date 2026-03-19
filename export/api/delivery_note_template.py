@@ -3,7 +3,7 @@ import frappe
 
 
 # ---------------------------------------------------------------------------
-# 20-column template for the custom Delivery Note Item import/export flow.
+# 19-column template for the custom Delivery Note Item import/export flow.
 #
 # Column order matches the business spec exactly.
 # Fieldnames are the FINAL aligned names on Delivery Note Item.
@@ -20,7 +20,6 @@ TEMPLATE_FIELDS = [
     ("Customer Part No",          "custom_customer_part_no"),
     ("Item Name",                 "item_name"),
     ("Quantity",                  "qty"),
-    ("Rate",                      "rate"),
     ("Total Avilable quantity",   "actual_qty"),
     ("UnitWT (Kg)",               "custom_net_weight"),
     ("Net WT (Kg)",               "custom_net_wt"),
