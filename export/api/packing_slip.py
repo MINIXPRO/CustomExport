@@ -57,6 +57,7 @@ ITEM_FIELD_REMAP = {
     "custom_h":                     "custom_height",
     "custom_vol_cuft":              "custom_cubic_feet",
     "custom_vol_cumtr":             "custom_cubic_meter",
+    "rate":                         "custom_rate",
 }
 
 

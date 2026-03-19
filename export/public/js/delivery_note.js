@@ -61,6 +61,7 @@ frappe.ui.form.on("Delivery Note", {
         toggle_sub_items_columns(frm);
         carry_forward_sub_items(frm);
         hide_items_rows(frm);
+        setup_items_grid_template_buttons(frm);
     }
 });
 
@@ -140,7 +141,13 @@ function setup_items_grid_template_buttons(frm) {
         $custom.append(
             $('<button class="btn btn-xs btn-secondary">')
                 .text(__('Upload Template'))
-                .on('click', () => show_upload_dialog(frm))
+                .on('click', () => {
+                    if (frm.is_new()) {
+                        frappe.msgprint(__('Please save the Delivery Note before uploading the template.'));
+                        return;
+                    }
+                    show_upload_dialog(frm);
+                })
         );
 
         // Place custom buttons in the same container as the standard template buttons.
