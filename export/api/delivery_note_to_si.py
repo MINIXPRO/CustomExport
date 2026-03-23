@@ -4,18 +4,18 @@ from erpnext.stock.doctype.delivery_note.delivery_note import make_sales_invoice
 
 
 # Fields that must differ to keep rows separate (grouping key).
-# so_detail is included to ensure we only merge rows originating from the
-# same Sales Order item; rows from different SO items must stay separate so
-# that so_detail on the merged row correctly represents all source DN rows.
-# Note: "rate" is intentionally excluded from the key.  Rate equality is
-# handled inside _merge_items: rows with one distinct non-zero rate merge
-# (using that rate); rows with multiple different non-zero rates stay separate.
+#
+# "rate" is excluded: rate equality is handled in _resolve_rate — one
+# distinct non-zero rate → merge; multiple different non-zero rates → split.
+#
+# "sales_order" / "so_detail" are excluded: they are empty on manually-added
+# or template-uploaded rows, and the same item can appear under different SO
+# references in a split-shipment workflow.  The rate rule already handles the
+# only commercially meaningful difference (different contracted prices).
 MERGE_KEY_FIELDS = [
     "item_code",
     "uom",
     "warehouse",
-    "sales_order",       # against_sales_order mapped to sales_order in SI
-    "so_detail",         # SO Item row — keeps different SO items separate
     "cost_center",
     "item_tax_template",
     "income_account",
