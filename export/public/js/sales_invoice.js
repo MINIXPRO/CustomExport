@@ -36,6 +36,13 @@ frappe.ui.form.on("Sales Invoice", {
     },
 
     validate(frm) {
+        // Recalculate CIF for all items rows (covers template uploads where field triggers don't fire)
+        if (frm.doc.custom_order_type === "Export") {
+            (frm.doc.items || []).forEach(row => {
+                calculate_cif_values(frm, row.doctype, row.name);
+            });
+        }
+
         // Recalculate all sub-item values first
         if (frm.doc.custom_sub_items) {
             frm.doc.custom_sub_items.forEach(row => {
