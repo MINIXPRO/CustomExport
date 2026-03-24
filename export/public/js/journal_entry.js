@@ -4,7 +4,7 @@ frappe.ui.form.on("Journal Entry", {
             var row = frappe.get_doc(cdt, cdn);
             frappe.model.validate_missing(row, "account");
             return {
-                query: "erpnext.accounts.doctype.journal_entry.journal_entry.get_against_jv",
+                query: "export.api.journal_entry.get_against_jv",
                 filters: {
                     account: row.account,
                     party: row.party,
