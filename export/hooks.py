@@ -254,7 +254,8 @@ doctype_js = {
     "Packing Slip": "public/js/packing_slip.js",
     "Purchase Order": "public/js/purchase_order.js",
     "Purchase Receipt": "public/js/purchase_receipt.js",
-    "Purchase Invoice": "public/js/purchase_invoice.js"
+    "Purchase Invoice": "public/js/purchase_invoice.js",
+    "Journal Entry": "public/js/journal_entry.js"
 }
 
 
