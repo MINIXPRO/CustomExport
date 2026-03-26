@@ -338,8 +338,7 @@ function apply_parent_values_from_sub_items(frm) {
 
 
 function toggle_cif_total_by_currency(frm) {
-    const show = frm.doc.currency !== "INR";
-    frm.toggle_display("custom_cif_total_amount_", show);
+    frm.toggle_display("custom_cif_total_amount_", false);
 }
 
 
