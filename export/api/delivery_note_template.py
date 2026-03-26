@@ -122,17 +122,23 @@ def import_delivery_note_items(delivery_note, file_url):
     """
     Import Delivery Note Item rows from the custom XLSX / CSV template.
 
-    Row 1: labels    (ignored)
-    Row 2: fieldnames  (used as column-to-field mapping, read dynamically)
-    Row 3+: data rows  → matched to existing DN items by item_code (in order)
+    STRATEGY: Clear and Rebuild.
+    The uploaded rows are the single source of truth for dn.items.
+    Rows absent from the upload are removed. Rows present are kept/created.
 
-    Protected identity fields (item_code, name, parent, …) are never overwritten.
-    Returns a dict with the count of updated rows.
+    Row 1: labels      (ignored)
+    Row 2: fieldnames  (column-to-field mapping)
+    Row 3+: data rows  → become the complete new dn.items
+
+    For each uploaded row the matching existing DN item (by item_code, in order)
+    is used as the base so ERPNext-linked fields (warehouse, SO reference,
+    income account, etc.) are preserved. Template field values are applied on top.
+    If no existing item matches, a fresh child row is created.
     """
     import os
     from collections import defaultdict
 
-    # Resolve file path
+    # ── Resolve file path ────────────────────────────────────────────────────
     site_path = frappe.get_site_path()
     if file_url.startswith("/files/"):
         file_path = os.path.join(site_path, "public", file_url.lstrip("/"))
@@ -144,7 +150,7 @@ def import_delivery_note_items(delivery_note, file_url):
     if not os.path.exists(file_path):
         frappe.throw(f"File not found on disk: {file_path}")
 
-    # Read rows (XLSX or CSV)
+    # ── Read rows (XLSX or CSV) ──────────────────────────────────────────────
     ext = os.path.splitext(file_url.lower())[1]
     if ext in (".xlsx", ".xls"):
         try:
@@ -166,90 +172,70 @@ def import_delivery_note_items(delivery_note, file_url):
             "(Row 1 = labels, Row 2 = fieldnames, Row 3+ = data)."
         )
 
-    # Row 2 (index 1) → fieldname list
+    # ── Parse fieldnames from row 2 ──────────────────────────────────────────
     fieldnames = [str(f).strip() if f is not None else None for f in rows[1]]
 
-    # Data starts at row 3 (index 2)
-    data_rows = rows[2:]
+    # Fields managed by Frappe / used only as match key — never set from template
+    SKIP_FIELDS = {"item_code", "name", "parent", "parenttype", "parentfield", "idx"}
 
-    dn = frappe.get_doc("Delivery Note", delivery_note)
-    frappe.has_permission("Delivery Note", "write", dn, throw=True)
-
-    # Map item_code → ordered list of DN item rows (preserves duplicate-item order)
-    dn_item_map = defaultdict(list)
-    for item in dn.items:
-        dn_item_map[str(item.item_code).strip()].append(item)
-
-    usage_counter = defaultdict(int)
-    updated_count = 0
-    created_count = 0
-
-    # Fields that must never be overwritten on EXISTING rows during import.
-    # For NEW rows appended by this import, item_code IS writable (it identifies the item).
-    PROTECTED_EXISTING = {"item_code", "name", "parent", "parenttype", "parentfield", "idx"}
-    # Frappe internals that must never be set even on brand-new child rows.
-    PROTECTED_NEW      = {"name", "parent", "parenttype", "parentfield"}
-
-    for data_row in data_rows:
-        # Skip entirely blank rows
+    # ── Parse all valid data rows upfront ────────────────────────────────────
+    parsed_rows = []
+    for data_row in rows[2:]:
         if all(v is None or str(v).strip() == "" for v in data_row):
             continue
-
-        # Build fieldname → value dict for this row
         row_data = {}
         for col_idx, fn in enumerate(fieldnames):
             if not fn or fn == "None":
                 continue
             row_data[fn] = data_row[col_idx] if col_idx < len(data_row) else None
-
-        # item_code is required to identify / create a row
         item_code = str(row_data.get("item_code") or "").strip()
         if not item_code:
             continue
+        parsed_rows.append((item_code, row_data))
 
-        candidates = dn_item_map.get(item_code, [])
+    if not parsed_rows:
+        frappe.throw("No valid item rows found in the uploaded file.")
+
+    dn = frappe.get_doc("Delivery Note", delivery_note)
+    frappe.has_permission("Delivery Note", "write", dn, throw=True)
+
+    # ── Build lookup of existing items by item_code (ordered for duplicates) ─
+    existing_map = defaultdict(list)
+    for item in dn.items:
+        existing_map[str(item.item_code).strip()].append(item)
+
+    # ── Clear child table and rebuild from uploaded rows ─────────────────────
+    dn.items = []
+    usage_counter = defaultdict(int)
+
+    for item_code, row_data in parsed_rows:
+        candidates = existing_map.get(item_code, [])
         idx = usage_counter[item_code]
-
-        if idx < len(candidates):
-            # ── Update existing DN item ──────────────────────────────────────
-            dn_item   = candidates[idx]
-            protected = PROTECTED_EXISTING
-            is_new    = False
-        else:
-            # ── No matching existing row → append a new child row ────────────
-            dn_item   = dn.append("items", {})
-            protected = PROTECTED_NEW
-            is_new    = True
-
         usage_counter[item_code] += 1
 
-        # Apply values
-        for fn, value in row_data.items():
-            if fn in protected:
-                continue
-            if not hasattr(dn_item, fn):
-                continue
-            setattr(dn_item, fn, None if (value is None or str(value).strip() == "") else value)
-
-        if is_new:
-            created_count += 1
+        if idx < len(candidates):
+            # Base the new row on the existing DN item to preserve linked fields
+            base = candidates[idx].as_dict()
+            base.pop("name", None)
+            base.pop("idx", None)
+            new_item = dn.append("items", base)
         else:
-            updated_count += 1
+            # No existing row for this item_code — create a fresh child row
+            new_item = dn.append("items", {"item_code": item_code})
 
-    total = updated_count + created_count
+        # Apply uploaded field values on top (skip identity/protected fields)
+        for fn, value in row_data.items():
+            if fn in SKIP_FIELDS:
+                continue
+            if not hasattr(new_item, fn):
+                continue
+            setattr(new_item, fn, None if (value is None or str(value).strip() == "") else value)
+
+    total = len(parsed_rows)
     dn.save(ignore_permissions=True)
     frappe.db.commit()
 
-    parts = []
-    if updated_count:
-        parts.append(f"updated {updated_count}")
-    if created_count:
-        parts.append(f"created {created_count} new")
-    summary = " and ".join(parts) or "processed 0"
-
     return {
-        "updated": updated_count,
-        "created": created_count,
         "total":   total,
-        "message": f"Successfully {summary} item row(s) in {delivery_note}.",
+        "message": f"Successfully imported {total} item row(s) into {delivery_note}. Delivery Note items replaced.",
     }
