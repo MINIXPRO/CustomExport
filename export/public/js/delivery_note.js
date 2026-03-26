@@ -573,7 +573,7 @@ function recalculate_dn_totals(frm) {
     (frm.doc.items || []).forEach(row => {
         if (row.item_code === "Bank Charges") return;
         total_qty += flt(row.qty);
-        total_net_weight += flt(row.custom_net_weight);
+        total_net_weight += flt(row.total_weight);
     });
     frm.set_value("total_qty", total_qty);
     frm.set_value("total_net_weight", total_net_weight);
