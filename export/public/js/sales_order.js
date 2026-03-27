@@ -165,34 +165,43 @@ function toggle_sub_items_columns(frm) {
     let columns_to_show = [];
 
     if (is_export) {
-        // Display columns for Export order type
+        // Columns for Export order type — sequence matches business spec exactly
         columns_to_show = [
-            { fieldname: 'parent_item', columns: 1 },
-            { fieldname: 'sub_item_code', columns: 1 },
-            { fieldname: 'qty', columns: 1 },
-            { fieldname: 'rate', columns: 1 },
-            { fieldname: 'amount', columns: 1 },
-            { fieldname: 'custom_net_weight', columns: 1 },
-            { fieldname: 'custom_freight__insurance_', columns: 1 },
-            { fieldname: 'custom_cif_unit_price_', columns: 1 },
-            { fieldname: 'custom___cif_total_amount', columns: 1 }
+            { fieldname: 'parent_item',                        columns: 1 },
+            { fieldname: 'sub_item_code',                      columns: 1 },
+            { fieldname: 'sub_description',                    columns: 1 },
+            { fieldname: 'gst_hsn_code',                       columns: 1 },
+            { fieldname: 'delivery_date',                      columns: 1 },
+            { fieldname: 'qty',                                columns: 1 },
+            { fieldname: 'rate',                               columns: 1 },
+            { fieldname: 'uom',                                columns: 1 },
+            { fieldname: 'custom_distributed_discount_amount', columns: 1 },
+            { fieldname: 'amount',                             columns: 1 },
         ];
     } else {
         // Reset to default columns for non-Export order types
         columns_to_show = [];
     }
 
-    
-        let value = {};
-        value[grid.doctype] = columns_to_show;
+    let value = {};
+    value[grid.doctype] = columns_to_show;
 
-        frappe.model.user_settings.save(frm.doctype, 'GridView', value).then((r) => {
-            frappe.model.user_settings[frm.doctype] = r.message || r;
-            grid.reset_grid();
-            frm.refresh_field("custom_sub_items");
+    frappe.model.user_settings.save(frm.doctype, 'GridView', value).then((r) => {
+        frappe.model.user_settings[frm.doctype] = r.message || r;
+        grid.reset_grid();
+        // Force all required columns visible at runtime (same pattern as Sales Invoice)
+        [
+            'sub_description',
+            'gst_hsn_code',
+            'delivery_date',
+            'uom',
+            'custom_distributed_discount_amount'
+        ].forEach(fn => {
+            grid.update_docfield_property(fn, 'hidden', 0);
+            grid.update_docfield_property(fn, 'in_list_view', 1);
         });
-
-    
+        frm.refresh_field("custom_sub_items");
+    });
 }
 
 

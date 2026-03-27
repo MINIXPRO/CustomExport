@@ -198,7 +198,7 @@ function apply_parent_values_from_sub_items(frm) {
 
 
 function toggle_cif_total_by_currency(frm) {
-    frm.toggle_display("custom_cif_total_amount_", true);
+    frm.toggle_display("custom_cif_total_amount_", false);
 }
 
 

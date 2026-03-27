@@ -10,11 +10,15 @@
   "sub_item_code",
   "sub_item_name",
   "sub_description",
+  "gst_hsn_code",
+  "delivery_date",
   "qty",
+  "uom",
   "custom_net_weight",
   "base_rate",
   "rate",
   "amount",
+  "custom_distributed_discount_amount",
   "custom_freight__insurance_",
   "custom_cif_unit_price",
   "custom__cif_total_amount",
@@ -60,11 +64,36 @@
    "label": "Sub Description"
   },
   {
+   "fetch_from": "sub_item_code.gst_hsn_code",
+   "fetch_if_empty": 1,
+   "fieldname": "gst_hsn_code",
+   "fieldtype": "Data",
+   "in_list_view": 1,
+   "label": "HSN/SAC",
+   "read_only": 0
+  },
+  {
+   "fieldname": "delivery_date",
+   "fieldtype": "Date",
+   "in_list_view": 1,
+   "label": "Delivery Date"
+  },
+  {
    "fieldname": "qty",
    "fieldtype": "Float",
    "in_list_view": 1,
    "label": "Quantity",
    "precision": "9"
+  },
+  {
+   "fetch_from": "sub_item_code.stock_uom",
+   "fetch_if_empty": 1,
+   "fieldname": "uom",
+   "fieldtype": "Link",
+   "in_list_view": 1,
+   "label": "UOM",
+   "options": "UOM",
+   "read_only": 0
   },
   {
    "fetch_from": "sub_item_code.weight_per_unit",
@@ -98,6 +127,14 @@
    "options": "currency",
    "precision": "2",
    "read_only": 1
+  },
+  {
+   "fieldname": "custom_distributed_discount_amount",
+   "fieldtype": "Currency",
+   "in_list_view": 1,
+   "label": "Distributed Discount Amount",
+   "options": "currency",
+   "precision": "2"
   },
   {
    "fieldname": "custom_freight__insurance_",
