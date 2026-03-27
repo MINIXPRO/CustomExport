@@ -212,4 +212,15 @@ def make_sales_invoice_custom(source_name, target_doc=None, args=None):
     for idx, item in enumerate(doc.items, start=1):
         item.idx = idx
 
+    # 4. Reset weight_per_unit from Item Master
+    item_codes = list({item.item_code for item in doc.items if item.item_code})
+    if item_codes:
+        weight_map = {
+            r.name: r.weight_per_unit
+            for r in frappe.get_all("Item", filters={"name": ["in", item_codes]}, fields=["name", "weight_per_unit"])
+        }
+        for item in doc.items:
+            if item.item_code in weight_map:
+                item.weight_per_unit = weight_map[item.item_code]
+
     return doc

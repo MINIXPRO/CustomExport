@@ -567,6 +567,7 @@ frappe.ui.form.on("Delivery Note Sub Items", {
  * PARENT TOTALS: QTY + NET WEIGHT
  ************************************/
 function recalculate_dn_totals(frm) {
+    if (frm.doc.docstatus !== 0) return;
     let total_qty = 0;
     let total_net_weight = 0;
     (frm.doc.items || []).forEach(row => {

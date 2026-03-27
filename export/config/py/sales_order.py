@@ -62,6 +62,17 @@ def make_sales_invoice_custom(source_name, target_doc=None, ignore_permissions=F
                 if hasattr(so_item, field):
                     setattr(si_item, field, getattr(so_item, field))
 
+    # Reset weight_per_unit from Item Master (overrides whatever SO carried forward)
+    item_codes = list({item.item_code for item in doc.items if item.item_code})
+    if item_codes:
+        weight_map = {
+            r.name: r.weight_per_unit
+            for r in frappe.get_all("Item", filters={"name": ["in", item_codes]}, fields=["name", "weight_per_unit"])
+        }
+        for item in doc.items:
+            if item.item_code in weight_map:
+                item.weight_per_unit = weight_map[item.item_code]
+
     return doc
 
 
@@ -75,5 +86,16 @@ def make_delivery_note_custom(source_name, target_doc=None, ignore_permissions=F
 
     # Pass Order Type → Delivery Note
     doc.custom_order_type = so.order_type
+
+    # Reset weight_per_unit from Item Master (overrides whatever SO carried forward)
+    item_codes = list({item.item_code for item in doc.items if item.item_code})
+    if item_codes:
+        weight_map = {
+            r.name: r.weight_per_unit
+            for r in frappe.get_all("Item", filters={"name": ["in", item_codes]}, fields=["name", "weight_per_unit"])
+        }
+        for item in doc.items:
+            if item.item_code in weight_map:
+                item.weight_per_unit = weight_map[item.item_code]
 
     return doc
