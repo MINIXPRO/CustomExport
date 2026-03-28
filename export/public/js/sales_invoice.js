@@ -287,7 +287,7 @@ function toggle_export_fields(frm) {
             { fieldname: 'qty', columns: 1 },
             { fieldname: 'rate', columns: 1 },
             { fieldname: 'amount', columns: 1 },
-            { fieldname: 'custom_net_weight', columns: 1 },
+            { fieldname: 'total_weight', columns: 1 },
             { fieldname: 'custom_freight__insurance_', columns: 1 },
             { fieldname: 'custom_cif_unit_price_', columns: 1 },
             { fieldname: 'custom___cif_total_amount', columns: 1 }
