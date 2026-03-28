@@ -64,6 +64,7 @@ frappe.ui.form.on("Packing Slip", {
 });
 
 function set_currency(frm) {
+    if (frm.doc.docstatus !== 0) return;
 
     if (!frm.doc.delivery_note) return;
 
@@ -87,6 +88,9 @@ function set_currency(frm) {
 
 
 function carry_forward_sub_items(frm) {
+    // Never mutate a submitted or cancelled document
+    if (frm.doc.docstatus !== 0) return;
+
     // If custom_sub_items already populated, skip
     if (frm.doc.custom_sub_items && frm.doc.custom_sub_items.length > 0) return;
 
@@ -445,6 +449,7 @@ frappe.ui.form.on("Packing Slip Sub Items", {
  * CUBIC FEET / CUBIC METER CALCULATION
  ************************************/
 function recalculate_all_cubic_rows(frm) {
+    if (frm.doc.docstatus !== 0) return;
     (frm.doc.items || []).forEach(row => {
         calculate_cubic(frm, row.doctype, row.name);
     });

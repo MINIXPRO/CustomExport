@@ -228,6 +228,9 @@ function show_upload_dialog(frm) {
 
 
 function carry_forward_sub_items(frm) {
+    // Never mutate a submitted or cancelled document
+    if (frm.doc.docstatus !== 0) return;
+
     // If custom_sub_items already populated, skip
     if (frm.doc.custom_sub_items && frm.doc.custom_sub_items.length > 0) return;
 
@@ -576,7 +579,7 @@ function recalculate_dn_totals(frm) {
         total_net_weight += flt(row.total_weight);
     });
     frm.set_value("total_qty", total_qty);
-    frm.set_value("total_net_weight", total_net_weight);
+    frm.set_value("total_net_weight", flt(total_net_weight, 2));
 }
 
 
