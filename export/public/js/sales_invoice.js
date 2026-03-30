@@ -7,7 +7,7 @@ frappe.ui.form.on("Sales Invoice", {
         toggle_cif_total_by_currency(frm);
         toggle_sub_items_columns(frm);
         hide_items_rows(frm);
-        recalculate_si_totals(frm);
+        // recalculate_si_totals(frm);
 
         // Sub-items table configuration (only if field exists)
         if (frm.fields_dict.custom_sub_items) {
@@ -53,7 +53,7 @@ frappe.ui.form.on("Sales Invoice", {
 
         apply_parent_values_from_sub_items(frm);
         calculate_si_cif_totals(frm);
-        recalculate_si_totals(frm);
+        // recalculate_si_totals(frm);
 
         // Add Bank Charges item at the end when order type is Export
         // Commented out: reverting CIF difference adjustment via Bank Charges
@@ -334,12 +334,12 @@ frappe.ui.form.on("Sales Invoice Item", {
     qty(frm, cdt, cdn) {
         calculate_net_weight(frm, cdt, cdn);
         calculate_cif_values(frm, cdt, cdn);
-        setTimeout(() => recalculate_si_totals(frm), 150);
+        // setTimeout(() => recalculate_si_totals(frm), 150);
     },
 
     weight_per_unit(frm, cdt, cdn) {
         calculate_net_weight(frm, cdt, cdn);
-        setTimeout(() => recalculate_si_totals(frm), 150);
+        // setTimeout(() => recalculate_si_totals(frm), 150);
     },
 
     custom_freight__insurance_(frm, cdt, cdn) {
@@ -560,18 +560,18 @@ function calculate_sub_item_cif_values(frm, cdt, cdn) {
 /************************************
  * SALES INVOICE TOTAL QTY & NET WEIGHT
  ************************************/
-function recalculate_si_totals(frm) {
-    if (frm.doc.docstatus !== 0) return;
-    let total_qty = 0;
-    let total_net_weight = 0;
-    (frm.doc.items || []).forEach(row => {
-        if (row.item_code === "Bank Charges") return;
-        total_qty += flt(row.qty);
-        total_net_weight += flt(row.total_weight);
-    });
-    frm.set_value("total_qty", total_qty);
-    frm.set_value("total_net_weight", flt(total_net_weight, 2));
-}
+// function recalculate_si_totals(frm) {
+//     if (frm.doc.docstatus !== 0) return;
+//     let total_qty = 0;
+//     let total_net_weight = 0;
+//     (frm.doc.items || []).forEach(row => {
+//         if (row.item_code === "Bank Charges") return;
+//         total_qty += flt(row.qty);
+//         total_net_weight += flt(row.total_weight);
+//     });
+//     frm.set_value("total_qty", total_qty);
+//     frm.set_value("total_net_weight", flt(total_net_weight, 2));
+// }
 
 
 /************************************
