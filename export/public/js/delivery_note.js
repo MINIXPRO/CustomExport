@@ -7,7 +7,7 @@ frappe.ui.form.on("Delivery Note", {
         toggle_cif_total_by_currency(frm);
         toggle_sub_items_columns(frm);
         hide_items_rows(frm);
-        recalculate_dn_totals(frm);
+        // recalculate_dn_totals(frm);
 
         setup_items_grid_template_buttons(frm);
 
@@ -48,7 +48,7 @@ frappe.ui.form.on("Delivery Note", {
 
         apply_parent_values_from_sub_items(frm);
         calculate_dn_cif_totals(frm);
-        recalculate_dn_totals(frm);
+        // recalculate_dn_totals(frm);
 
         // Add Bank Charges item at the end when order type is Export
         // Commented out: reverting CIF difference adjustment via Bank Charges
@@ -455,12 +455,12 @@ frappe.ui.form.on("Delivery Note Item", {
     qty(frm, cdt, cdn) {
         calculate_net_weight(frm, cdt, cdn);
         calculate_cif_values(frm, cdt, cdn);
-        setTimeout(() => recalculate_dn_totals(frm), 150);
+        // setTimeout(() => recalculate_dn_totals(frm), 150);
     },
 
     weight_per_unit(frm, cdt, cdn) {
         calculate_net_weight(frm, cdt, cdn);
-        setTimeout(() => recalculate_dn_totals(frm), 150);
+        // setTimeout(() => recalculate_dn_totals(frm), 150);
     },
 
     custom_freight__insurance_(frm, cdt, cdn) {
@@ -569,18 +569,18 @@ frappe.ui.form.on("Delivery Note Sub Items", {
 /************************************
  * PARENT TOTALS: QTY + NET WEIGHT
  ************************************/
-function recalculate_dn_totals(frm) {
-    if (frm.doc.docstatus !== 0) return;
-    let total_qty = 0;
-    let total_net_weight = 0;
-    (frm.doc.items || []).forEach(row => {
-        if (row.item_code === "Bank Charges") return;
-        total_qty += flt(row.qty);
-        total_net_weight += flt(row.total_weight);
-    });
-    frm.set_value("total_qty", total_qty);
-    frm.set_value("total_net_weight", flt(total_net_weight, 2));
-}
+// function recalculate_dn_totals(frm) {
+//     if (frm.doc.docstatus !== 0) return;
+//     let total_qty = 0;
+//     let total_net_weight = 0;
+//     (frm.doc.items || []).forEach(row => {
+//         if (row.item_code === "Bank Charges") return;
+//         total_qty += flt(row.qty);
+//         total_net_weight += flt(row.total_weight);
+//     });
+//     frm.set_value("total_qty", total_qty);
+//     frm.set_value("total_net_weight", total_net_weight);
+// }
 
 
 /************************************
