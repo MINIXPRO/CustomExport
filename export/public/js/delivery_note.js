@@ -406,7 +406,7 @@ function toggle_export_fields(frm) {
             { fieldname: 'item_code', columns: 2 },
             { fieldname: 'description', columns: 2 },
             { fieldname: 'qty', columns: 1 },
-            { fieldname: 'custom_net_weight', columns: 1 },
+            { fieldname: 'total_weight', columns: 1 },
         ];
     } else {
         // Reset to default columns for non-Export order types

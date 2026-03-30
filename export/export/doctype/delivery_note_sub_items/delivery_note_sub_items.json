@@ -72,7 +72,7 @@
    "fieldname": "custom_net_weight",
    "fieldtype": "Float",
    "in_list_view": 1,
-   "label": "Net Weight",
+   "label": "Total Weight",
    "precision": "5"
   },
   {
