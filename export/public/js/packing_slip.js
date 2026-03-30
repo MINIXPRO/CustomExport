@@ -7,7 +7,7 @@ frappe.ui.form.on("Packing Slip", {
         toggle_cif_total_by_currency(frm);
         toggle_sub_items_columns(frm);
         hide_items_rows(frm);
-        recalculate_all_cubic_rows(frm);
+        // recalculate_all_cubic_rows(frm);
 
         // Sub-items table configuration (only if field exists)
         if (frm.fields_dict.custom_sub_items) {
@@ -59,7 +59,7 @@ frappe.ui.form.on("Packing Slip", {
 
         carry_forward_sub_items(frm);
         hide_items_rows(frm);
-        recalculate_all_cubic_rows(frm);
+        // recalculate_all_cubic_rows(frm);
     }
 });
 
@@ -67,6 +67,9 @@ function set_currency(frm) {
     if (frm.doc.docstatus !== 0) return;
 
     if (!frm.doc.delivery_note) return;
+
+    // Skip if currency already set (existing document) — avoids making form dirty on open
+    if (frm.doc.custom_currency) return;
 
     frappe.db.get_value("Delivery Note", frm.doc.delivery_note, "currency")
     .then(r => {
