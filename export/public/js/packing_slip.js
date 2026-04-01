@@ -223,12 +223,14 @@ function toggle_sub_items_columns(frm) {
             { fieldname: 'parent_item', columns: 1 },
             { fieldname: 'sub_item_code', columns: 1 },
             { fieldname: 'qty', columns: 1 },
-            { fieldname: 'rate', columns: 1 },
-            { fieldname: 'amount', columns: 1 },
-            { fieldname: 'custom_net_weight', columns: 1 },
-            { fieldname: 'custom_freight__insurance_', columns: 1 },
-            { fieldname: 'custom_cif_unit_price_', columns: 1 },
-            { fieldname: 'custom___cif_total_amount', columns: 1 }
+            { fieldname: 'custom_unit_weight', columns: 1 },
+            { fieldname: 'custom__gross_weight', columns: 1 },
+            { fieldname: 'custom_box', columns: 1 },
+            { fieldname: 'custom_length', columns: 1 },
+            { fieldname: 'custom_width', columns: 1 },
+            { fieldname: 'custom_height', columns: 1 },
+            { fieldname: 'custom_cubic_feet', columns: 1 },
+            { fieldname: 'custom_cubic_meter', columns: 1 }
         ];
     } else {
         // Reset to default columns for non-Export order types
