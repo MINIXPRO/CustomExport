@@ -1,0 +1,29 @@
+[
+ {
+  "doctype": "Custom Field",
+  "name": "Quotation-custom_customer_number",
+  "dt": "Quotation",
+  "label": "Customer Number",
+  "fieldname": "custom_customer_number",
+  "fieldtype": "Data",
+  "insert_after": "amended_from"
+ },
+ {
+  "doctype": "Custom Field",
+  "name": "Quotation-custom_country_of_provenance",
+  "dt": "Quotation",
+  "label": "Country of Provenance",
+  "fieldname": "custom_country_of_provenance",
+  "fieldtype": "Data",
+  "insert_after": "custom_shipping_mark"
+ },
+ {
+  "doctype": "Custom Field",
+  "name": "Quotation-custom_country_of_acquisition",
+  "dt": "Quotation",
+  "label": "Country of Acquisition",
+  "fieldname": "custom_country_of_acquisition",
+  "fieldtype": "Data",
+  "insert_after": "custom_country_of_provenance"
+ }
+]
