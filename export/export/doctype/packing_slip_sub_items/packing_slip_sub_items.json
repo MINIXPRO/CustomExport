@@ -13,6 +13,14 @@
   "sub_description",
   "qty",
   "custom_net_weight",
+  "custom_unit_weight",
+  "custom__gross_weight",
+  "custom_box",
+  "custom_length",
+  "custom_width",
+  "custom_height",
+  "custom_cubic_feet",
+  "custom_cubic_meter",
   "base_rate",
   "rate",
   "amount",
@@ -73,6 +81,61 @@
    "fieldtype": "Float",
    "in_list_view": 1,
    "label": "Net Weight",
+   "precision": "5"
+  },
+  {
+   "fieldname": "custom_unit_weight",
+   "fieldtype": "Float",
+   "in_list_view": 0,
+   "label": "Unit Weight",
+   "precision": "5"
+  },
+  {
+   "fieldname": "custom__gross_weight",
+   "fieldtype": "Float",
+   "in_list_view": 0,
+   "label": "Gross Weight",
+   "precision": "5"
+  },
+  {
+   "fieldname": "custom_box",
+   "fieldtype": "Int",
+   "in_list_view": 0,
+   "label": "Box"
+  },
+  {
+   "fieldname": "custom_length",
+   "fieldtype": "Float",
+   "in_list_view": 0,
+   "label": "Length",
+   "precision": "2"
+  },
+  {
+   "fieldname": "custom_width",
+   "fieldtype": "Float",
+   "in_list_view": 0,
+   "label": "Width",
+   "precision": "2"
+  },
+  {
+   "fieldname": "custom_height",
+   "fieldtype": "Float",
+   "in_list_view": 0,
+   "label": "Height",
+   "precision": "2"
+  },
+  {
+   "fieldname": "custom_cubic_feet",
+   "fieldtype": "Float",
+   "in_list_view": 0,
+   "label": "Cubic Feet",
+   "precision": "5"
+  },
+  {
+   "fieldname": "custom_cubic_meter",
+   "fieldtype": "Float",
+   "in_list_view": 0,
+   "label": "Cubic Meter",
    "precision": "5"
   },
   {
@@ -148,7 +211,7 @@
  "index_web_pages_for_search": 1,
  "istable": 1,
  "links": [],
- "modified": "2026-01-24 12:00:00.000000",
+ "modified": "2026-04-02 12:00:00.000000",
  "modified_by": "Administrator",
  "module": "Export",
  "name": "Packing Slip Sub Items",
