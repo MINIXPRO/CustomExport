@@ -23,7 +23,8 @@
   "custom_cif_unit_price",
   "custom__cif_total_amount",
   "custom_cif_unit_price_",
-  "custom___cif_total_amount"
+  "custom___cif_total_amount",
+  "parent_row_uid"
  ],
  "fields": [
   {
@@ -69,8 +70,7 @@
    "fieldname": "gst_hsn_code",
    "fieldtype": "Data",
    "in_list_view": 1,
-   "label": "HSN/SAC",
-   "read_only": 0
+   "label": "HSN/SAC"
   },
   {
    "fieldname": "delivery_date",
@@ -92,8 +92,7 @@
    "fieldtype": "Link",
    "in_list_view": 1,
    "label": "UOM",
-   "options": "UOM",
-   "read_only": 0
+   "options": "UOM"
   },
   {
    "fetch_from": "sub_item_code.weight_per_unit",
@@ -172,11 +171,17 @@
    "label": "CIF Total Amount (Company Currency)",
    "options": "Company:company:default_currency",
    "precision": "2"
+  },
+  {
+   "fieldname": "parent_row_uid",
+   "fieldtype": "Data",
+   "label": "Parent Row UID",
+   "read_only": 1
   }
  ],
  "istable": 1,
  "links": [],
- "modified": "2026-01-24 11:45:05.228524",
+ "modified": "2026-04-02 14:00:45.429396",
  "modified_by": "Administrator",
  "module": "Export",
  "name": "Sales Order Sub Item",

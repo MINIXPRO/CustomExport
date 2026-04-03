@@ -205,6 +205,12 @@
    "options": "currency",
    "precision": "2",
    "read_only": 1
+  },
+  {
+   "fieldname": "parent_row_uid",
+   "fieldtype": "Data",
+   "label": "Parent Row UID",
+   "read_only": 1
   }
  ],
  "grid_page_length": 50,

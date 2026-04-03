@@ -128,6 +128,7 @@ function carry_forward_sub_items(frm) {
                     frm.doc.custom_sub_items = [];
                     r.message.custom_sub_items.forEach(function(sub_item) {
                         let new_sub = frm.add_child('custom_sub_items');
+                        new_sub.parent_row_uid = sub_item.parent_row_uid;
                         new_sub.parent_item = sub_item.parent_item;
                         new_sub.parent_item_name = sub_item.parent_item_name;
                         new_sub.sub_item_code = sub_item.sub_item_code;
@@ -164,10 +165,11 @@ function apply_parent_values_from_sub_items(frm) {
 
     let grouped = {};
     sub_items.forEach(sub => {
-        if (!sub.parent_item) return;
+        let key = sub.parent_row_uid;
+        if (!key) return;
 
-        if (!grouped[sub.parent_item]) {
-            grouped[sub.parent_item] = {
+        if (!grouped[key]) {
+            grouped[key] = {
                 rate_sum: 0,
                 qty: null,
                 has_qty: false,
@@ -176,23 +178,23 @@ function apply_parent_values_from_sub_items(frm) {
             };
         }
 
-        grouped[sub.parent_item].rate_sum += flt(sub.rate);
+        grouped[key].rate_sum += flt(sub.rate);
 
-        if (!grouped[sub.parent_item].has_qty && (sub.qty || sub.qty === 0)) {
-            grouped[sub.parent_item].qty = flt(sub.qty);
-            grouped[sub.parent_item].has_qty = true;
+        if (!grouped[key].has_qty && (sub.qty || sub.qty === 0)) {
+            grouped[key].qty = flt(sub.qty);
+            grouped[key].has_qty = true;
         }
 
-        if (!grouped[sub.parent_item].has_freight && (sub.custom_freight__insurance_ || sub.custom_freight__insurance_ === 0)) {
-            grouped[sub.parent_item].freight_pct = flt(sub.custom_freight__insurance_);
-            grouped[sub.parent_item].has_freight = true;
+        if (!grouped[key].has_freight && (sub.custom_freight__insurance_ || sub.custom_freight__insurance_ === 0)) {
+            grouped[key].freight_pct = flt(sub.custom_freight__insurance_);
+            grouped[key].has_freight = true;
         }
     });
 
     let conversion_rate = flt(frm.doc.conversion_rate) || 1;
 
     (frm.doc.items || []).forEach(row => {
-        let group = grouped[row.item_code];
+        let group = grouped[row.custom_row_uid];
         if (!group) return;
 
         let next_rate = group.rate_sum;
@@ -351,11 +353,16 @@ frappe.ui.form.on("Sales Invoice Item", {
         let row = locals[cdt][cdn];
 
         if (row.item_code) {
-            // First, remove any existing sub-items for this parent item to avoid duplicates
-            let existing_sub_items = frm.doc.custom_sub_items || [];
-            frm.doc.custom_sub_items = existing_sub_items.filter(function(sub) {
-                return sub.parent_item !== row.item_code;
-            });
+            let old_uid = row.custom_row_uid;
+            let new_uid = frappe.utils.get_random(8) + '_' + Date.now();
+            frappe.model.set_value(cdt, cdn, 'custom_row_uid', new_uid);
+
+            if (old_uid) {
+                let existing_sub_items = frm.doc.custom_sub_items || [];
+                frm.doc.custom_sub_items = existing_sub_items.filter(function(sub) {
+                    return sub.parent_row_uid !== old_uid;
+                });
+            }
 
             frappe.call({
                 method: 'frappe.client.get',
@@ -367,8 +374,8 @@ frappe.ui.form.on("Sales Invoice Item", {
                     if (r.message && r.message.custom_sub_items && r.message.custom_sub_items.length > 0) {
                         r.message.custom_sub_items.forEach(function(sub_item) {
                             let sub_row = frm.add_child('custom_sub_items');
+                            sub_row.parent_row_uid = new_uid;
                             sub_row.parent_item = row.item_code;
-                            // Only set parent_item_name if field exists
                             if (frm.fields_dict.custom_sub_items.grid.docfields.find(f => f.fieldname === 'parent_item_name')) {
                                 sub_row.parent_item_name = row.item_name;
                             }
@@ -394,17 +401,12 @@ frappe.ui.form.on("Sales Invoice Item", {
                         }
                     }
 
-                    // Recalculate net weight after weight_per_unit is fetched
                     setTimeout(() => {
                         calculate_net_weight(frm, cdt, cdn);
                     }, 300);
-
-                    // Toggle visibility after operation
-                    // toggle_sub_items_table_visibility(frm);
                 }
             });
         } else {
-            // Recalculate when item changes
             setTimeout(() => {
                 calculate_cif_values(frm, cdt, cdn);
             }, 300);
@@ -413,15 +415,11 @@ frappe.ui.form.on("Sales Invoice Item", {
 
     before_items_remove(frm, cdt, cdn) {
         let row = locals[cdt][cdn];
-        if (row.item_code && frm.doc.custom_sub_items) {
-            // Remove all sub-items related to this parent item
+        if (row.custom_row_uid && frm.doc.custom_sub_items) {
             frm.doc.custom_sub_items = frm.doc.custom_sub_items.filter(function(sub) {
-                return sub.parent_item !== row.item_code;
+                return sub.parent_row_uid !== row.custom_row_uid;
             });
             frm.refresh_field('custom_sub_items');
-
-            // Toggle visibility after removal
-            // toggle_sub_items_table_visibility(frm);
         }
     }
 });
@@ -486,6 +484,7 @@ function calculate_cif_values(frm, cdt, cdn) {
 
     // Order currency CIF
     let cif_unit_currency = rate + (rate * freight_pct / 100);
+    console.log(cif_unit_currency,qty,cif_unit_currency * qty)
     let cif_total_currency = cif_unit_currency * qty;
 
     frappe.model.set_value(cdt, cdn, "custom_cif_unit_price", cif_unit_company);

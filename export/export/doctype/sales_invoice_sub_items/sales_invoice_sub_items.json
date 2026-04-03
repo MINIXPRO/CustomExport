@@ -148,6 +148,12 @@
    "in_list_view": 1,
    "label": "Duty Drawback",
    "options": "NA\nITC-8467B"
+  },
+  {
+   "fieldname": "parent_row_uid",
+   "fieldtype": "Data",
+   "label": "Parent Row UID",
+   "read_only": 1
   }
  ],
  "grid_page_length": 50,

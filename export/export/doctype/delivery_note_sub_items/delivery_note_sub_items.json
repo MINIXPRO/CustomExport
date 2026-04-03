@@ -20,7 +20,8 @@
   "custom_cif_unit_price",
   "custom__cif_total_amount",
   "custom_cif_unit_price_",
-  "custom___cif_total_amount"
+  "custom___cif_total_amount",
+  "parent_row_uid"
  ],
  "fields": [
   {
@@ -134,13 +135,18 @@
    "label": "CIF Total Amount (Order Currency)",
    "options": "currency",
    "precision": "2"
+  },
+  {
+   "fieldname": "parent_row_uid",
+   "fieldtype": "Data",
+   "label": "Parent Row UID"
   }
  ],
  "grid_page_length": 50,
  "index_web_pages_for_search": 1,
  "istable": 1,
  "links": [],
- "modified": "2026-01-24 16:30:57.813887",
+ "modified": "2026-04-03 08:27:03.374967",
  "modified_by": "Administrator",
  "module": "Export",
  "name": "Delivery Note Sub Items",

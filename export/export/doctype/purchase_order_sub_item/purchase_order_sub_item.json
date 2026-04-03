@@ -135,6 +135,12 @@
    "label": "CIF Total Amount (Company Currency)",
    "options": "Company:company:default_currency",
    "precision": "2"
+  },
+  {
+   "fieldname": "parent_row_uid",
+   "fieldtype": "Data",
+   "label": "Parent Row UID",
+   "read_only": 1
   }
  ],
  "istable": 1,
