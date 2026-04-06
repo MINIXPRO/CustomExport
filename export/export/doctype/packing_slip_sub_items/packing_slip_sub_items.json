@@ -99,7 +99,7 @@
   },
   {
    "fieldname": "custom_box",
-   "fieldtype": "Int",
+   "fieldtype": "Data",
    "in_list_view": 0,
    "label": "Box"
   },
