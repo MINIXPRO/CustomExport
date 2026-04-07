@@ -62,7 +62,7 @@ def _resolve_rate(rows):
     return None   # multiple different rates → cannot safely merge
 
 
-def _merge_items(items):
+def _merge_items(items, kit_item_codes=None):
     """
     Merge SI item rows that share the same grouping key.
 
@@ -82,7 +82,15 @@ def _merge_items(items):
     For merged groups (count > 1) dn_detail is cleared and so_detail is
     preserved.  See make_sales_invoice_custom docstring for the full rationale.
     Single-row groups keep dn_detail intact (standard behavior).
+
+    KIT items
+    ---------
+    Items whose item_code appears in kit_item_codes are never merged,
+    regardless of how many rows share the same grouping key.
     """
+    if kit_item_codes is None:
+        kit_item_codes = set()
+
     # First pass: collect all rows per merge-key, preserving order.
     groups = {}
     order = []
@@ -99,6 +107,11 @@ def _merge_items(items):
 
         if len(rows) == 1:
             result.append(rows[0])
+            continue
+
+        # KIT items must never be merged — keep every row separate.
+        if rows[0].item_code in kit_item_codes:
+            result.extend(rows)
             continue
 
         chosen_rate = _resolve_rate(rows)
@@ -126,21 +139,33 @@ def _get_fully_billed_dn_item_names(source_name):
     """
     Return the set of Delivery Note Item row names that are already fully billed.
 
-    Why this is needed
-    ------------------
-    get_invoiced_qty_map (used by the standard make_sales_invoice internally)
-    groups by dn_detail.  Merged SI rows have dn_detail=None, so those
-    already-invoiced DN items are invisible to that query and appear as
-    still-billable on a second SI creation attempt.
+    Two complementary detection strategies are used:
 
-    We compensate by inspecting billed_amt on the DN items directly.
-    billed_amt is populated after SI submission by update_billed_amount_based_on_so
-    (FIFO) for rows where dn_detail was cleared.
+    Strategy A — billed_amt check
+    ------------------------------
+    Works for DN items that were invoiced as single (non-merged) SI rows, where
+    ERPNext preserves dn_detail and standard post-submission hooks update billed_amt.
+
+    Strategy B — merged SI row check
+    ----------------------------------
+    When our merge logic groups N same-key DN rows into one SI row, it clears
+    dn_detail (to avoid the overbilling validator).  If the source DN items also
+    have no so_detail, ERPNext's update_billed_amount_based_on_so cannot trace back
+    and billed_amt stays 0 forever — making those rows appear unbillable on any
+    second SI attempt.
+
+    We compensate by directly querying submitted SI items that:
+      • reference this delivery_note
+      • have dn_detail = NULL  (our merge cleared it)
+    and treating every DN item with a matching item_code as already covered.
+
+    Together the two strategies correctly identify all billed DN rows regardless
+    of whether they were merged or not.
     """
     dn_items = frappe.get_all(
         "Delivery Note Item",
         filters={"parent": source_name},
-        fields=["name", "amount", "billed_amt"],
+        fields=["name", "item_code", "amount", "billed_amt"],
     )
 
     over_billing_allowance = (
@@ -149,12 +174,34 @@ def _get_fully_billed_dn_item_names(source_name):
     max_factor = 1 + over_billing_allowance / 100.0
 
     fully_billed = set()
+
+    # Strategy A: billed_amt tracks (single rows with dn_detail preserved)
     for d in dn_items:
         amount = d.amount or 0
         billed = d.billed_amt or 0
         if amount > 0 and billed >= amount * max_factor - 0.001:
             fully_billed.add(d.name)
         elif amount == 0 and billed > 0:
+            fully_billed.add(d.name)
+
+    # Strategy B: merged SI rows (dn_detail = NULL) already covering these DN items.
+    # A merged row's item_code tells us which DN item group it covers entirely.
+    merged_billed = frappe.db.sql(
+        """
+        SELECT DISTINCT sii.item_code
+        FROM `tabSales Invoice Item` sii
+        JOIN `tabSales Invoice` si ON si.name = sii.parent
+        WHERE sii.delivery_note = %s
+          AND (sii.dn_detail IS NULL OR sii.dn_detail = '')
+          AND si.docstatus = 1
+        """,
+        source_name,
+        as_dict=True,
+    )
+    merged_billed_codes = {r.item_code for r in merged_billed}
+
+    for d in dn_items:
+        if d.item_code in merged_billed_codes:
             fully_billed.add(d.name)
 
     return fully_billed
@@ -205,14 +252,27 @@ def make_sales_invoice_custom(source_name, target_doc=None, args=None):
     if not doc.items:
         return doc
 
-    # 3. Merge split rows on the Sales Invoice
-    doc.items = _merge_items(doc.items)
+    # 3. Identify KIT items — these must never be merged into a single SI row.
+    item_codes = list({item.item_code for item in doc.items if item.item_code})
+    kit_item_codes = set()
+    if item_codes:
+        kit_item_codes = {
+            r.name
+            for r in frappe.get_all(
+                "Item",
+                filters={"name": ["in", item_codes], "custom_is_kit": 1},
+                fields=["name"],
+            )
+        }
+
+    # 4. Merge split rows on the Sales Invoice (KIT items are kept separate)
+    doc.items = _merge_items(doc.items, kit_item_codes=kit_item_codes)
 
     # Re-index row numbers so the child table is internally consistent
     for idx, item in enumerate(doc.items, start=1):
         item.idx = idx
 
-    # 4. Reset weight_per_unit from Item Master
+    # 5. Reset weight_per_unit from Item Master
     item_codes = list({item.item_code for item in doc.items if item.item_code})
     if item_codes:
         weight_map = {

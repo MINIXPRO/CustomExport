@@ -262,7 +262,10 @@ doctype_js = {
 doc_events = {
     "Item": {
         "before_save": "export.api.item.before_save",
-    }
+    },
+    "Purchase Invoice": {
+        "validate": "export.api.purchase_invoice.validate",
+    },
 }
 
 override_whitelisted_methods = {
