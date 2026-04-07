@@ -9,6 +9,9 @@ frappe.ui.form.on("Sales Invoice", {
         hide_items_rows(frm);
         // recalculate_si_totals(frm);
 
+        setup_items_grid_template_buttons(frm);
+        setup_sub_items_grid_template_buttons(frm);
+
         // Sub-items table configuration (only if field exists)
         if (frm.fields_dict.custom_sub_items) {
             frm.fields_dict.custom_sub_items.grid.cannot_add_rows = true;
@@ -72,6 +75,284 @@ frappe.ui.form.on("Sales Invoice", {
         hide_items_rows(frm);
     }
 });
+
+/************************************
+ * ITEMS TEMPLATE BUTTONS (items grid)
+ ************************************/
+function _hide_standard_items_template_buttons(frm) {
+    const grid = frm.fields_dict?.items?.grid;
+    if (!grid) return;
+    const $wrapper = $(grid.wrapper);
+    $wrapper.find('.grid-download, .grid-upload').hide();
+    $wrapper.find('[data-label="Download"], [data-label="Upload"]')
+        .closest('li').hide();
+}
+
+function setup_items_grid_template_buttons(frm) {
+    const grid = frm.fields_dict?.items?.grid;
+    if (!grid) return;
+
+    const $wrapper = $(grid.wrapper);
+    if (!$wrapper.hasClass('si-items-grid-custom')) {
+        $wrapper.addClass('si-items-grid-custom');
+        if (!$('#si-items-grid-custom-style').length) {
+            $('<style id="si-items-grid-custom-style">' +
+              '.si-items-grid-custom .grid-download,' +
+              '.si-items-grid-custom .grid-upload { display:none !important; }' +
+              '</style>').appendTo('head');
+        }
+    }
+    _hide_standard_items_template_buttons(frm);
+
+    setTimeout(() => {
+        _hide_standard_items_template_buttons(frm);
+
+        const $footer = $wrapper.find('.grid-footer');
+        if ($footer.length && !$footer.is(':visible')) {
+            $footer.css('display', 'flex');
+            $footer.find('.grid-buttons').hide();
+        }
+
+        if ($wrapper.find('.custom-si-template-btns').length) return;
+
+        const $custom = $('<div class="custom-si-template-btns flex gap-2"></div>');
+
+        $custom.append(
+            $('<button class="btn btn-xs btn-secondary">')
+                .text(__('Download Template'))
+                .on('click', () => {
+                    const si = (!frm.is_new() && frm.doc.name)
+                        ? encodeURIComponent(frm.doc.name)
+                        : '';
+                    const url = frappe.urllib.get_full_url(
+                        '/api/method/export.api.si_items_template.get_si_items_template'
+                        + (si ? `?sales_invoice=${si}` : '')
+                    );
+                    window.open(url, '_blank');
+                })
+        );
+
+        $custom.append(
+            $('<button class="btn btn-xs btn-secondary">')
+                .text(__('Upload Template'))
+                .on('click', () => {
+                    if (frm.is_new()) {
+                        frappe.msgprint(__('Please save the Sales Invoice before uploading.'));
+                        return;
+                    }
+                    show_items_upload_dialog(frm);
+                })
+        );
+
+        const $downloadBtn = $wrapper.find('.grid-download');
+        if ($downloadBtn.length && !$downloadBtn.parent().is($footer)) {
+            // download button is inside a right-side wrapper div — inject alongside it
+            $downloadBtn.parent().append($custom);
+        } else {
+            // no download button, or it is a direct child of the footer flex container —
+            // use margin-left:auto to pin our buttons to the right edge
+            $custom.css('margin-left', 'auto');
+            ($footer.length ? $footer : $wrapper).append($custom);
+        }
+    }, 400);
+}
+
+function show_items_upload_dialog(frm) {
+    const d = new frappe.ui.Dialog({
+        title: __('Upload Items Template'),
+        fields: [
+            {
+                label: __('File (.xlsx or .csv)'),
+                fieldname: 'template_file',
+                fieldtype: 'Attach',
+                reqd: 1,
+                description: __(
+                    'Upload the filled items template. ' +
+                    'Row 1 = labels, Row 2 = fieldnames, Row 3+ = data. ' +
+                    'Each row needs item_code.'
+                )
+            }
+        ],
+        primary_action_label: __('Import'),
+        primary_action(values) {
+            if (!values.template_file) {
+                frappe.msgprint(__('Please attach a file first.'));
+                return;
+            }
+            const ext = values.template_file.split('.').pop().toLowerCase();
+            if (!['xlsx', 'csv'].includes(ext)) {
+                frappe.msgprint(__('Only .xlsx and .csv files are supported.'));
+                return;
+            }
+
+            d.set_df_property('template_file', 'read_only', 1);
+            d.get_primary_btn().prop('disabled', true).text(__('Importing…'));
+
+            frappe.call({
+                method: 'export.api.si_items_template.import_si_items',
+                args: {
+                    sales_invoice: frm.doc.name,
+                    file_url: values.template_file
+                },
+                callback(r) {
+                    d.hide();
+                    if (r.message) {
+                        frappe.show_alert({
+                            message: __(r.message.message),
+                            indicator: 'green'
+                        }, 6);
+                        frm.reload_doc();
+                    }
+                },
+                error() {
+                    d.set_df_property('template_file', 'read_only', 0);
+                    d.get_primary_btn().prop('disabled', false).text(__('Import'));
+                }
+            });
+        }
+    });
+    d.show();
+}
+
+
+/************************************
+ * SUB-ITEMS TEMPLATE BUTTONS (custom_sub_items grid)
+ ************************************/
+function _hide_standard_sub_items_template_buttons(frm) {
+    const grid = frm.fields_dict?.custom_sub_items?.grid;
+    if (!grid) return;
+    const $wrapper = $(grid.wrapper);
+    $wrapper.find('.grid-download, .grid-upload').hide();
+    $wrapper.find('[data-label="Download"], [data-label="Upload"]')
+        .closest('li').hide();
+}
+
+function setup_sub_items_grid_template_buttons(frm) {
+    const grid = frm.fields_dict?.custom_sub_items?.grid;
+    if (!grid) return;
+
+    const $wrapper = $(grid.wrapper);
+    if (!$wrapper.hasClass('si-sub-items-grid-custom')) {
+        $wrapper.addClass('si-sub-items-grid-custom');
+        if (!$('#si-sub-items-grid-custom-style').length) {
+            $('<style id="si-sub-items-grid-custom-style">' +
+              '.si-sub-items-grid-custom .grid-download,' +
+              '.si-sub-items-grid-custom .grid-upload { display:none !important; }' +
+              '</style>').appendTo('head');
+        }
+    }
+    _hide_standard_sub_items_template_buttons(frm);
+
+    setTimeout(() => {
+        _hide_standard_sub_items_template_buttons(frm);
+
+        const $footer = $wrapper.find('.grid-footer');
+        if ($footer.length && !$footer.is(':visible')) {
+            $footer.css('display', 'flex');
+            $footer.find('.grid-buttons').hide();
+        }
+
+        if ($wrapper.find('.custom-si-sub-items-template-btns').length) return;
+
+        const $custom = $('<div class="custom-si-sub-items-template-btns flex gap-2"></div>');
+
+        $custom.append(
+            $('<button class="btn btn-xs btn-secondary">')
+                .text(__('Download Sub Items Template'))
+                .on('click', () => {
+                    const si = (!frm.is_new() && frm.doc.name)
+                        ? encodeURIComponent(frm.doc.name)
+                        : '';
+                    const url = frappe.urllib.get_full_url(
+                        '/api/method/export.api.si_sub_items_template.get_si_sub_items_template'
+                        + (si ? `?sales_invoice=${si}` : '')
+                    );
+                    window.open(url, '_blank');
+                })
+        );
+
+        $custom.append(
+            $('<button class="btn btn-xs btn-secondary">')
+                .text(__('Upload Sub Items Template'))
+                .on('click', () => {
+                    if (frm.is_new()) {
+                        frappe.msgprint(__('Please save the Sales Invoice before uploading.'));
+                        return;
+                    }
+                    show_sub_items_upload_dialog(frm);
+                })
+        );
+
+        const $downloadBtn = $wrapper.find('.grid-download');
+        if ($downloadBtn.length && !$downloadBtn.parent().is($footer)) {
+            // download button is inside a right-side wrapper div — inject alongside it
+            $downloadBtn.parent().append($custom);
+        } else {
+            // no download button, or it is a direct child of the footer flex container —
+            // use margin-left:auto to pin our buttons to the right edge
+            $custom.css('margin-left', 'auto');
+            ($footer.length ? $footer : $wrapper).append($custom);
+        }
+    }, 400);
+}
+
+function show_sub_items_upload_dialog(frm) {
+    const d = new frappe.ui.Dialog({
+        title: __('Upload Sub Items Template'),
+        fields: [
+            {
+                label: __('File (.xlsx or .csv)'),
+                fieldname: 'template_file',
+                fieldtype: 'Attach',
+                reqd: 1,
+                description: __(
+                    'Upload the filled sub items template. ' +
+                    'Row 1 = labels, Row 2 = fieldnames, Row 3+ = data. ' +
+                    'Each row needs parent_item and sub_item_code.'
+                )
+            }
+        ],
+        primary_action_label: __('Import'),
+        primary_action(values) {
+            if (!values.template_file) {
+                frappe.msgprint(__('Please attach a file first.'));
+                return;
+            }
+            const ext = values.template_file.split('.').pop().toLowerCase();
+            if (!['xlsx', 'csv'].includes(ext)) {
+                frappe.msgprint(__('Only .xlsx and .csv files are supported.'));
+                return;
+            }
+
+            d.set_df_property('template_file', 'read_only', 1);
+            d.get_primary_btn().prop('disabled', true).text(__('Importing…'));
+
+            frappe.call({
+                method: 'export.api.si_sub_items_template.import_si_sub_items',
+                args: {
+                    sales_invoice: frm.doc.name,
+                    file_url: values.template_file
+                },
+                callback(r) {
+                    d.hide();
+                    if (r.message) {
+                        frappe.show_alert({
+                            message: __(r.message.message),
+                            indicator: 'green'
+                        }, 6);
+                        frm.reload_doc();
+                    }
+                },
+                error() {
+                    d.set_df_property('template_file', 'read_only', 0);
+                    d.get_primary_btn().prop('disabled', false).text(__('Import'));
+                }
+            });
+        }
+    });
+    d.show();
+}
+
 
 function hide_items_rows(frm) {
     const grid = frm.fields_dict?.items?.grid;

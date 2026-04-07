@@ -9,6 +9,7 @@ frappe.ui.form.on("Packing Slip", {
         hide_items_rows(frm);
         // recalculate_all_cubic_rows(frm);
 
+        setup_items_grid_template_buttons(frm);
         setup_sub_items_grid_template_buttons(frm);
 
         // Sub-items table configuration (only if field exists)
@@ -66,6 +67,150 @@ frappe.ui.form.on("Packing Slip", {
 });
 
 /************************************
+ * ITEMS GRID – CUSTOM TEMPLATE BUTTONS
+ ************************************/
+function _hide_standard_items_template_buttons(frm) {
+    const grid = frm.fields_dict?.items?.grid;
+    if (!grid) return;
+    const $wrapper = $(grid.wrapper);
+    $wrapper.find('.grid-download, .grid-upload').hide();
+    $wrapper.find('[data-label="Download"], [data-label="Upload"]')
+        .closest('li').hide();
+}
+
+function setup_items_grid_template_buttons(frm) {
+    const grid = frm.fields_dict?.items?.grid;
+    if (!grid) return;
+
+    // CSS-first hide: prevents standard buttons from flashing on initial render.
+    const $wrapper = $(grid.wrapper);
+    if (!$wrapper.hasClass('ps-items-grid-custom')) {
+        $wrapper.addClass('ps-items-grid-custom');
+        if (!$('#ps-items-grid-custom-style').length) {
+            $('<style id="ps-items-grid-custom-style">' +
+              '.ps-items-grid-custom .grid-download,' +
+              '.ps-items-grid-custom .grid-upload { display:none !important; }' +
+              '</style>').appendTo('head');
+        }
+    }
+    _hide_standard_items_template_buttons(frm);
+
+    setTimeout(() => {
+        _hide_standard_items_template_buttons(frm);
+
+        const $footer = $wrapper.find('.grid-footer');
+
+        // On submitted/To Bill docs Frappe hides .grid-footer.
+        // Restore with display:flex so buttons appear right-aligned (same as standard).
+        // Keep .grid-buttons (Add Row etc.) hidden since the doc is not editable.
+        if ($footer.length && !$footer.is(':visible')) {
+            $footer.css('display', 'flex');
+            $footer.find('.grid-buttons').hide();
+        }
+
+        if ($wrapper.find('.custom-ps-template-btns').length) return;
+
+        const $custom = $('<div class="custom-ps-template-btns flex gap-2"></div>');
+
+        $custom.append(
+            $('<button class="btn btn-xs btn-secondary">')
+                .text(__('Download Template'))
+                .on('click', () => {
+                    const ps = (!frm.is_new() && frm.doc.name)
+                        ? encodeURIComponent(frm.doc.name)
+                        : '';
+                    const url = frappe.urllib.get_full_url(
+                        '/api/method/export.api.ps_items_template.get_ps_items_template'
+                        + (ps ? `?packing_slip=${ps}` : '')
+                    );
+                    window.open(url, '_blank');
+                })
+        );
+
+        $custom.append(
+            $('<button class="btn btn-xs btn-secondary">')
+                .text(__('Upload Template'))
+                .on('click', () => {
+                    if (frm.is_new()) {
+                        frappe.msgprint(__('Please save the Packing Slip before uploading the template.'));
+                        return;
+                    }
+                    show_items_upload_dialog(frm);
+                })
+        );
+
+        const $downloadBtn = $wrapper.find('.grid-download');
+        if ($downloadBtn.length && !$downloadBtn.parent().is($footer)) {
+            // download button is inside a right-side wrapper div — inject alongside it
+            $downloadBtn.parent().append($custom);
+        } else {
+            // no download button, or it is a direct child of the footer flex container —
+            // use margin-left:auto to pin our buttons to the right edge
+            $custom.css('margin-left', 'auto');
+            ($footer.length ? $footer : $wrapper).append($custom);
+        }
+    }, 400);
+}
+
+function show_items_upload_dialog(frm) {
+    const d = new frappe.ui.Dialog({
+        title: __('Upload Items Template'),
+        fields: [
+            {
+                label: __('File (.xlsx or .csv)'),
+                fieldname: 'template_file',
+                fieldtype: 'Attach',
+                reqd: 1,
+                description: __(
+                    'Upload the filled template. ' +
+                    'Row 1 = labels, Row 2 = fieldnames, Row 3+ = data. ' +
+                    'Each row must have item_code.'
+                )
+            }
+        ],
+        primary_action_label: __('Import'),
+        primary_action(values) {
+            if (!values.template_file) {
+                frappe.msgprint(__('Please attach a file first.'));
+                return;
+            }
+            const ext = values.template_file.split('.').pop().toLowerCase();
+            if (!['xlsx', 'csv'].includes(ext)) {
+                frappe.msgprint(__('Only .xlsx and .csv files are supported.'));
+                return;
+            }
+
+            d.set_df_property('template_file', 'read_only', 1);
+            d.get_primary_btn().prop('disabled', true).text(__('Importing…'));
+
+            frappe.call({
+                method: 'export.api.ps_items_template.import_ps_items',
+                args: {
+                    packing_slip: frm.doc.name,
+                    file_url: values.template_file
+                },
+                callback(r) {
+                    d.hide();
+                    if (r.message) {
+                        frappe.show_alert({
+                            message: __(r.message.message),
+                            indicator: 'green'
+                        }, 6);
+                        frm.reload_doc();
+                    }
+                },
+                error() {
+                    d.set_df_property('template_file', 'read_only', 0);
+                    d.get_primary_btn().prop('disabled', false).text(__('Import'));
+                }
+            });
+        }
+    });
+    d.show();
+}
+
+
+/************************************
  * SUB-ITEMS TEMPLATE BUTTONS (custom_sub_items grid)
  ************************************/
 function _hide_standard_sub_items_template_buttons(frm) {
@@ -81,11 +226,35 @@ function setup_sub_items_grid_template_buttons(frm) {
     const grid = frm.fields_dict?.custom_sub_items?.grid;
     if (!grid) return;
 
-    setTimeout(() => _hide_standard_sub_items_template_buttons(frm), 0);
+    // --- CSS-first hide: prevents standard buttons from ever flashing on initial render ---
+    // The CSS rule applies to buttons added to the DOM after the rule is inserted,
+    // so Frappe's .grid-download/.grid-upload are hidden the instant they render.
+    const $wrapper = $(grid.wrapper);
+    if (!$wrapper.hasClass('ps-sub-items-grid-custom')) {
+        $wrapper.addClass('ps-sub-items-grid-custom');
+        if (!$('#ps-sub-items-grid-custom-style').length) {
+            $('<style id="ps-sub-items-grid-custom-style">' +
+              '.ps-sub-items-grid-custom .grid-download,' +
+              '.ps-sub-items-grid-custom .grid-upload { display:none !important; }' +
+              '</style>').appendTo('head');
+        }
+    }
+    // Also hide any already-rendered standard buttons immediately.
+    _hide_standard_sub_items_template_buttons(frm);
 
     setTimeout(() => {
-        const $wrapper = $(grid.wrapper);
         _hide_standard_sub_items_template_buttons(frm);
+
+        const $footer = $wrapper.find('.grid-footer');
+
+        // On submitted/To Bill docs Frappe hides .grid-footer (display:none).
+        // Restore it with display:flex so our buttons appear in the same right-aligned
+        // position as the standard buttons. Keep .grid-buttons (Add Row etc.) hidden
+        // since the doc is not editable.
+        if ($footer.length && !$footer.is(':visible')) {
+            $footer.css('display', 'flex');
+            $footer.find('.grid-buttons').hide();
+        }
 
         if ($wrapper.find('.custom-ps-sub-items-template-btns').length) return;
 
@@ -118,11 +287,17 @@ function setup_sub_items_grid_template_buttons(frm) {
                 })
         );
 
+        // Inject into the same right-side container as the standard buttons.
+        // .grid-footer is now guaranteed visible (restored above if it was hidden).
         const $downloadBtn = $wrapper.find('.grid-download');
-        if ($downloadBtn.length) {
+        if ($downloadBtn.length && !$downloadBtn.parent().is($footer)) {
+            // download button is inside a right-side wrapper div — inject alongside it
             $downloadBtn.parent().append($custom);
         } else {
-            $wrapper.find('.grid-footer').append($custom);
+            // no download button, or it is a direct child of the footer flex container —
+            // use margin-left:auto to pin our buttons to the right edge
+            $custom.css('margin-left', 'auto');
+            ($footer.length ? $footer : $wrapper).append($custom);
         }
     }, 400);
 }
