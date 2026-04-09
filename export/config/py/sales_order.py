@@ -38,7 +38,7 @@ _SO_EXPORT_ITEM_FIELDS = [
     "custom___cif_total_amount",
 ]
 
-# Fields copied from each SO Sub Item row → Delivery Note Sub Item row.
+# Fields copied from each SO Sub Item row → Delivery Note / Sales Invoice Sub Item row.
 _SUB_ITEM_FIELDS = [
     "parent_item",
     "parent_item_name",
@@ -56,6 +56,12 @@ _SUB_ITEM_FIELDS = [
     "custom_cif_unit_price_",
     "custom___cif_total_amount",
 ]
+
+# Field remap for SO Sub Item → Sales Invoice Sub Item (different fieldnames).
+# Key: SO Sub Item fieldname  →  Value: SI Sub Item fieldname
+_SI_SUB_ITEM_REMAP = {
+    "custom_duty_drawback": "duty_drawback",
+}
 
 
 # ── Private helpers ───────────────────────────────────────────────────────────
@@ -84,21 +90,21 @@ def _reset_weight_per_unit(doc):
             item.weight_per_unit = weight_map[item.item_code]
 
 
-def _carry_forward_so_sub_items(so, doc):
+def _carry_forward_so_sub_items(so, doc, field_remap=None):
     """
-    Append SO custom_sub_items rows into the Delivery Note's custom_sub_items table
-    for every parent SO item that was mapped into the Delivery Note.
+    Append SO custom_sub_items rows into the target doc's custom_sub_items table
+    for every parent SO item that was mapped into the target doc.
 
     Linkage key
     -----------
-    SO Sub Item.parent_row_uid  ==  SO Item.custom_row_uid  ==  DN Item.custom_row_uid
-    custom_row_uid is auto-copied SO Item → DN Item by get_mapped_doc (no_copy = 0).
+    SO Sub Item.parent_row_uid  ==  SO Item.custom_row_uid  ==  doc Item.custom_row_uid
+    custom_row_uid is auto-copied SO Item → doc Item by get_mapped_doc (no_copy = 0).
 
     NULL parent_row_uid (legacy data)
     ----------------------------------
     SO items created before UID tracking was active have custom_row_uid = NULL, so
     their sub items carry parent_row_uid = NULL as well.  These rows are carried
-    forward as "orphaned" sub items (parent_row_uid stays NULL on the DN side),
+    forward as "orphaned" sub items (parent_row_uid stays NULL on the target side),
     which matches the behaviour of the legacy JS carry_forward_sub_items fallback.
 
     Duplicate prevention
@@ -106,19 +112,25 @@ def _carry_forward_so_sub_items(so, doc):
     The dedup key is (parent_row_uid, sub_item_code).  NULL is preserved so that
     re-running "Get Items From" on the same SO correctly skips both linked and
     orphaned rows without adding duplicates.
+
+    field_remap
+    -----------
+    Optional dict mapping SO Sub Item fieldname → target Sub Item fieldname for
+    fields whose names differ between doctypes (e.g. custom_duty_drawback → duty_drawback
+    for Sales Invoice Sub Items).
     """
     if not so.get("custom_sub_items"):
         return
 
-    # Build lookup: SO item custom_row_uid → matching DN item row.
+    # Build lookup: SO item custom_row_uid → matching target item row.
     # NULL keys are excluded here; the NULL path is handled explicitly below.
-    custom_uid_to_dn_item = {
-        dn_item.custom_row_uid: dn_item
-        for dn_item in doc.items
-        if dn_item.custom_row_uid
+    custom_uid_to_item = {
+        item.custom_row_uid: item
+        for item in doc.items
+        if item.custom_row_uid
     }
 
-    # Snapshot of (parent_row_uid, sub_item_code) pairs already in the DN.
+    # Snapshot of (parent_row_uid, sub_item_code) pairs already in the doc.
     existing = {
         (row.parent_row_uid, row.sub_item_code)
         for row in (doc.get("custom_sub_items") or [])
@@ -126,24 +138,30 @@ def _carry_forward_so_sub_items(so, doc):
 
     for so_sub in so.custom_sub_items:
         if so_sub.parent_row_uid:
-            # Linked sub item: find the DN item via its copied custom_row_uid.
-            dn_item = custom_uid_to_dn_item.get(so_sub.parent_row_uid)
-            if not dn_item:
-                # The parent SO item was not selected / not mapped into this DN.
+            # Linked sub item: find the target item via its copied custom_row_uid.
+            target_item = custom_uid_to_item.get(so_sub.parent_row_uid)
+            if not target_item:
+                # The parent SO item was not selected / not mapped into this doc.
                 continue
-            parent_uid_for_dn = dn_item.custom_row_uid
+            parent_uid_for_target = target_item.custom_row_uid
         else:
             # Orphaned sub item — parent SO item had no custom_row_uid.
             # Carry forward with NULL parent_row_uid (same as old JS behaviour).
-            parent_uid_for_dn = None
+            parent_uid_for_target = None
 
-        if (parent_uid_for_dn, so_sub.sub_item_code) in existing:
+        if (parent_uid_for_target, so_sub.sub_item_code) in existing:
             # Already present — skip to prevent duplication on re-fetch.
             continue
 
-        dn_sub = frappe._dict({field: so_sub.get(field) for field in _SUB_ITEM_FIELDS})
-        dn_sub["parent_row_uid"] = parent_uid_for_dn
-        doc.append("custom_sub_items", dn_sub)
+        sub = frappe._dict({field: so_sub.get(field) for field in _SUB_ITEM_FIELDS})
+        sub["parent_row_uid"] = parent_uid_for_target
+
+        # Apply any fieldname remaps (e.g. custom_duty_drawback → duty_drawback for SI).
+        if field_remap:
+            for src_field, dst_field in field_remap.items():
+                sub[dst_field] = so_sub.get(src_field)
+
+        doc.append("custom_sub_items", sub)
 
 
 # ── Whitelisted entry points ──────────────────────────────────────────────────
@@ -178,6 +196,7 @@ def make_sales_invoice_custom(source_name, target_doc=None, ignore_permissions=F
                     setattr(si_item, field, getattr(so_item, field))
 
     _reset_weight_per_unit(doc)
+    _carry_forward_so_sub_items(so, doc, field_remap=_SI_SUB_ITEM_REMAP)
     return doc
 
 
