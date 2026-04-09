@@ -21,17 +21,6 @@ MERGE_KEY_FIELDS = [
     "income_account",
 ]
 
-# Custom CIF/export item fields to carry forward (take value from first row in group)
-CUSTOM_ITEM_FIELDS = [
-    "custom_duty_drawback",
-    "custom_net_weight",
-    "custom_freight__insurance_",
-    "custom_cif_unit_price",
-    "custom__cif_total_amount",
-    "custom_cif_unit_price_",
-    "custom___cif_total_amount",
-]
-
 
 def _merge_key(item):
     """Return a tuple used to group SI item rows."""
