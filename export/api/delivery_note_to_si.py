@@ -3,6 +3,28 @@ from frappe.utils import flt
 from erpnext.stock.doctype.delivery_note.delivery_note import make_sales_invoice
 
 
+# Fields copied from each DN Sub Item row → Sales Invoice Sub Item row.
+# All fieldnames are identical on both doctypes; no remap needed.
+_DN_TO_SI_SUB_ITEM_FIELDS = [
+    "parent_item",
+    "parent_item_name",
+    "sub_item_code",
+    "sub_item_name",
+    "sub_description",
+    "qty",
+    "custom_net_weight",
+    "base_rate",
+    "rate",
+    "amount",
+    "custom_freight__insurance_",
+    "custom_cif_unit_price",
+    "custom__cif_total_amount",
+    "custom_cif_unit_price_",
+    "custom___cif_total_amount",
+    "parent_row_uid",
+]
+
+
 # Fields that must differ to keep rows separate (grouping key).
 #
 # "rate" is excluded: rate equality is handled in _resolve_rate — one
@@ -122,6 +144,72 @@ def _merge_items(items, kit_item_codes=None):
         result.append(first)
 
     return result
+
+
+def _carry_forward_dn_sub_items(source_name, doc):
+    """
+    Copy DN custom_sub_items rows into the Sales Invoice's custom_sub_items table.
+
+    Called after _merge_items so that doc.items reflects the final SI item list.
+
+    Linkage key
+    -----------
+    DN Sub Item.parent_row_uid  ==  DN Item.custom_row_uid  ==  SI Item.custom_row_uid
+    custom_row_uid has no_copy=0 on both DN Item and SI Item, so get_mapped_doc
+    auto-copies it from DN → SI.
+
+    NULL parent_row_uid (legacy / orphaned rows)
+    --------------------------------------------
+    DN sub items whose parent DN item had no custom_row_uid carry parent_row_uid=NULL.
+    These are carried forward as orphaned rows (parent_row_uid stays NULL on the SI).
+
+    Duplicate prevention
+    --------------------
+    Dedup key: (parent_row_uid, sub_item_code).  NULL parent_row_uid is valid as a
+    key value, correctly deduplicating orphaned rows on re-invoke.
+    """
+    dn_sub_items = frappe.get_all(
+        "Delivery Note Sub Items",
+        filters={"parent": source_name},
+        fields=_DN_TO_SI_SUB_ITEM_FIELDS,
+    )
+    if not dn_sub_items:
+        return
+
+    # Build lookup: DN item custom_row_uid → SI item (post-merge).
+    # NULL custom_row_uid keys are excluded; the NULL path is handled explicitly below.
+    custom_uid_to_si_item = {
+        item.custom_row_uid: item
+        for item in doc.items
+        if item.custom_row_uid
+    }
+
+    # Snapshot of (parent_row_uid, sub_item_code) pairs already in the SI.
+    existing = {
+        (row.parent_row_uid, row.sub_item_code)
+        for row in (doc.get("custom_sub_items") or [])
+    }
+
+    for dn_sub in dn_sub_items:
+        if dn_sub.parent_row_uid:
+            # Linked sub item: find the SI item via the shared custom_row_uid.
+            si_item = custom_uid_to_si_item.get(dn_sub.parent_row_uid)
+            if not si_item:
+                # Parent DN item was filtered out (fully billed) — skip.
+                continue
+            parent_uid_for_si = si_item.custom_row_uid
+        else:
+            # Orphaned sub item — carry forward with NULL parent_row_uid.
+            parent_uid_for_si = None
+
+        if (parent_uid_for_si, dn_sub.sub_item_code) in existing:
+            # Already present — skip to prevent duplication.
+            continue
+
+        sub = frappe._dict({field: dn_sub.get(field) for field in _DN_TO_SI_SUB_ITEM_FIELDS})
+        sub["parent_row_uid"] = parent_uid_for_si
+        doc.append("custom_sub_items", sub)
+        existing.add((parent_uid_for_si, dn_sub.sub_item_code))
 
 
 def _get_fully_billed_dn_item_names(source_name):
@@ -271,5 +359,8 @@ def make_sales_invoice_custom(source_name, target_doc=None, args=None):
         for item in doc.items:
             if item.item_code in weight_map:
                 item.weight_per_unit = weight_map[item.item_code]
+
+    # 6. Carry forward DN sub items into the Sales Invoice sub items table.
+    _carry_forward_dn_sub_items(source_name, doc)
 
     return doc
