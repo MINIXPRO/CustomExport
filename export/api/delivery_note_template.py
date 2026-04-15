@@ -117,6 +117,130 @@ def get_delivery_note_custom_template(delivery_note=None):
     frappe.response["type"]        = "download"
 
 
+# @frappe.whitelist()
+# def import_delivery_note_items(delivery_note, file_url):
+#     """
+#     Import Delivery Note Item rows from the custom XLSX / CSV template.
+
+#     STRATEGY: Clear and Rebuild.
+#     The uploaded rows are the single source of truth for dn.items.
+#     Rows absent from the upload are removed. Rows present are kept/created.
+
+#     Row 1: labels      (ignored)
+#     Row 2: fieldnames  (column-to-field mapping)
+#     Row 3+: data rows  → become the complete new dn.items
+
+#     For each uploaded row the matching existing DN item (by item_code, in order)
+#     is used as the base so ERPNext-linked fields (warehouse, SO reference,
+#     income account, etc.) are preserved. Template field values are applied on top.
+#     If no existing item matches, a fresh child row is created.
+#     """
+#     import os
+#     from collections import defaultdict
+
+#     # ── Resolve file path ────────────────────────────────────────────────────
+#     site_path = frappe.get_site_path()
+#     if file_url.startswith("/files/"):
+#         file_path = os.path.join(site_path, "public", file_url.lstrip("/"))
+#     elif file_url.startswith("/private/files/"):
+#         file_path = os.path.join(site_path, file_url.lstrip("/"))
+#     else:
+#         frappe.throw(f"Unsupported file URL format: {file_url}")
+
+#     if not os.path.exists(file_path):
+#         frappe.throw(f"File not found on disk: {file_path}")
+
+#     # ── Read rows (XLSX or CSV) ──────────────────────────────────────────────
+#     ext = os.path.splitext(file_url.lower())[1]
+#     if ext in (".xlsx", ".xls"):
+#         try:
+#             from openpyxl import load_workbook
+#         except ImportError:
+#             frappe.throw("openpyxl is required. Run: pip install openpyxl")
+#         wb   = load_workbook(file_path, data_only=True)
+#         rows = list(wb.active.iter_rows(values_only=True))
+#     elif ext == ".csv":
+#         import csv
+#         with open(file_path, newline="", encoding="utf-8-sig") as f:
+#             rows = [tuple(r) for r in csv.reader(f)]
+#     else:
+#         frappe.throw(f"Unsupported file format '{ext}'. Upload a .xlsx or .csv file.")
+
+#     if len(rows) < 3:
+#         frappe.throw(
+#             "The uploaded file must have at least 3 rows "
+#             "(Row 1 = labels, Row 2 = fieldnames, Row 3+ = data)."
+#         )
+
+#     # ── Parse fieldnames from row 2 ──────────────────────────────────────────
+#     fieldnames = [str(f).strip() if f is not None else None for f in rows[1]]
+
+#     # Fields managed by Frappe / used only as match key — never set from template
+#     SKIP_FIELDS = {"item_code", "name", "parent", "parenttype", "parentfield", "idx"}
+
+#     # ── Parse all valid data rows upfront ────────────────────────────────────
+#     parsed_rows = []
+#     for data_row in rows[2:]:
+#         if all(v is None or str(v).strip() == "" for v in data_row):
+#             continue
+#         row_data = {}
+#         for col_idx, fn in enumerate(fieldnames):
+#             if not fn or fn == "None":
+#                 continue
+#             row_data[fn] = data_row[col_idx] if col_idx < len(data_row) else None
+#         item_code = str(row_data.get("item_code") or "").strip()
+#         if not item_code:
+#             continue
+#         parsed_rows.append((item_code, row_data))
+
+#     if not parsed_rows:
+#         frappe.throw("No valid item rows found in the uploaded file.")
+
+#     dn = frappe.get_doc("Delivery Note", delivery_note)
+#     frappe.has_permission("Delivery Note", "write", dn, throw=True)
+
+#     # ── Build lookup of existing items by item_code (ordered for duplicates) ─
+#     existing_map = defaultdict(list)
+#     for item in dn.items:
+#         existing_map[str(item.item_code).strip()].append(item)
+
+#     # ── Clear child table and rebuild from uploaded rows ─────────────────────
+#     dn.items = []
+#     usage_counter = defaultdict(int)
+
+#     for item_code, row_data in parsed_rows:
+#         candidates = existing_map.get(item_code, [])
+#         idx = usage_counter[item_code]
+#         usage_counter[item_code] += 1
+
+#         if idx < len(candidates):
+#             # Base the new row on the existing DN item to preserve linked fields
+#             base = candidates[idx].as_dict()
+#             base.pop("name", None)
+#             base.pop("idx", None)
+#             new_item = dn.append("items", base)
+#         else:
+#             # No existing row for this item_code — create a fresh child row
+#             new_item = dn.append("items", {"item_code": item_code})
+
+#         # Apply uploaded field values on top (skip identity/protected fields)
+#         for fn, value in row_data.items():
+#             if fn in SKIP_FIELDS:
+#                 continue
+#             if not hasattr(new_item, fn):
+#                 continue
+#             setattr(new_item, fn, None if (value is None or str(value).strip() == "") else value)
+
+#     total = len(parsed_rows)
+#     dn.save(ignore_permissions=True)
+#     frappe.db.commit()
+
+#     return {
+#         "total":   total,
+#         "message": f"Successfully imported {total} item row(s) into {delivery_note}. Delivery Note items replaced.",
+#     }
+
+
 @frappe.whitelist()
 def import_delivery_note_items(delivery_note, file_url):
     """
@@ -132,8 +256,8 @@ def import_delivery_note_items(delivery_note, file_url):
 
     For each uploaded row the matching existing DN item (by item_code, in order)
     is used as the base so ERPNext-linked fields (warehouse, SO reference,
-    income account, etc.) are preserved. Template field values are applied on top.
-    If no existing item matches, a fresh child row is created.
+    income account, etc.) are preserved. Template field values are merged on top
+    BEFORE appending so Frappe picks up all values correctly on save().
     """
     import os
     from collections import defaultdict
@@ -175,7 +299,7 @@ def import_delivery_note_items(delivery_note, file_url):
     # ── Parse fieldnames from row 2 ──────────────────────────────────────────
     fieldnames = [str(f).strip() if f is not None else None for f in rows[1]]
 
-    # Fields managed by Frappe / used only as match key — never set from template
+    # Fields managed by Frappe / used only as match key — never overwrite from template
     SKIP_FIELDS = {"item_code", "name", "parent", "parenttype", "parentfield", "idx"}
 
     # ── Parse all valid data rows upfront ────────────────────────────────────
@@ -214,22 +338,30 @@ def import_delivery_note_items(delivery_note, file_url):
         usage_counter[item_code] += 1
 
         if idx < len(candidates):
-            # Base the new row on the existing DN item to preserve linked fields
+            # Start from the existing row dict to preserve all ERPNext-linked fields
             base = candidates[idx].as_dict()
             base.pop("name", None)
             base.pop("idx", None)
-            new_item = dn.append("items", base)
-        else:
-            # No existing row for this item_code — create a fresh child row
-            new_item = dn.append("items", {"item_code": item_code})
 
-        # Apply uploaded field values on top (skip identity/protected fields)
-        for fn, value in row_data.items():
-            if fn in SKIP_FIELDS:
-                continue
-            if not hasattr(new_item, fn):
-                continue
-            setattr(new_item, fn, None if (value is None or str(value).strip() == "") else value)
+            # ── KEY FIX: merge uploaded values INTO base dict BEFORE appending ──
+            # Previously values were set via setattr AFTER append, which Frappe
+            # does not reliably pick up on save(). Merging first fixes this.
+            for fn, value in row_data.items():
+                if fn in SKIP_FIELDS:
+                    continue
+                base[fn] = None if (value is None or str(value).strip() == "") else value
+
+            dn.append("items", base)
+
+        else:
+            # No existing row for this item_code — build fresh dict with uploaded values
+            merged = {"item_code": item_code}
+            for fn, value in row_data.items():
+                if fn in SKIP_FIELDS:
+                    continue
+                merged[fn] = None if (value is None or str(value).strip() == "") else value
+
+            dn.append("items", merged)
 
     total = len(parsed_rows)
     dn.save(ignore_permissions=True)
