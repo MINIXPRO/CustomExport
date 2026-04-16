@@ -167,14 +167,19 @@ def _carry_forward_so_sub_items(so, doc, field_remap=None):
 # ── Whitelisted entry points ──────────────────────────────────────────────────
 
 @frappe.whitelist()
-def make_sales_invoice_custom(source_name, target_doc=None, ignore_permissions=False):
+def make_sales_invoice_custom(source_name, target_doc=None, ignore_permissions=False, args=None):
     """
     SO → Sales Invoice: carry forward export fields and reset item weights.
 
     Registered in hooks.py as the override for
     erpnext.selling.doctype.sales_order.sales_order.make_sales_invoice.
+
     """
-    doc = make_sales_invoice(source_name, target_doc, ignore_permissions)
+    if isinstance(ignore_permissions, dict):
+        args = ignore_permissions
+        ignore_permissions = False
+
+    doc = make_sales_invoice(source_name, target_doc=target_doc, ignore_permissions=ignore_permissions, args=args)
 
     so = frappe.get_doc("Sales Order", source_name)
     doc.custom_order_type = so.order_type
