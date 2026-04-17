@@ -27,20 +27,14 @@ _DN_TO_SI_SUB_ITEM_FIELDS = [
 
 # Fields that must differ to keep rows separate (grouping key).
 #
-# "rate" is excluded: rate equality is handled in _resolve_rate — one
-# distinct non-zero rate → merge; multiple different non-zero rates → split.
-#
-# "sales_order" / "so_detail" are excluded: they are empty on manually-added
-# or template-uploaded rows, and the same item can appear under different SO
-# references in a split-shipment workflow.  The rate rule already handles the
-# only commercially meaningful difference (different contracted prices).
+# Merge rule: same item_code + not kit item → merge into one SI row.
+# Fields like warehouse, cost_center, income_account, sales_order, so_detail
+# must NOT block the merge — they may legitimately differ across DN rows for
+# the same item in a split-shipment workflow.
+# Rate differences are the only commercially meaningful split signal and are
+# handled separately by _resolve_rate (multiple distinct non-zero rates → keep separate).
 MERGE_KEY_FIELDS = [
     "item_code",
-    "uom",
-    "warehouse",
-    "cost_center",
-    "item_tax_template",
-    "income_account",
 ]
 
 
@@ -128,9 +122,22 @@ def _merge_items(items, kit_item_codes=None):
         chosen_rate = _resolve_rate(rows)
 
         if chosen_rate is None:
-            # Multiple distinct non-zero rates — keep rows separate.
-            result.extend(rows)
-            continue
+            # Multiple distinct non-zero rates in the DN.
+            # If all rows originate from the same SO line, the DN rates may simply
+            # contain a data-entry error.  Fall back to the canonical SO item rate
+            # so the merge can still proceed at the correct contracted price.
+            so_details = {str(r.so_detail or "") for r in rows}
+            if len(so_details) == 1 and "" not in so_details:
+                so_rate = flt(frappe.db.get_value("Sales Order Item", so_details.pop(), "rate"))
+                if so_rate:
+                    chosen_rate = so_rate
+                else:
+                    result.extend(rows)
+                    continue
+            else:
+                # Genuinely different SO lines with different rates — keep separate.
+                result.extend(rows)
+                continue
 
         # Safe to merge: sum qty, set the chosen rate, derive amount.
         total_qty = sum(flt(r.qty) for r in rows)
@@ -149,24 +156,22 @@ def _merge_items(items, kit_item_codes=None):
 def _carry_forward_dn_sub_items(source_name, doc):
     """
     Copy DN custom_sub_items rows into the Sales Invoice's custom_sub_items table.
+    Sub items are grouped and merged by (parent_item, sub_item_code) so that rows
+    split across multiple DN item rows of the same parent item are consolidated.
 
-    Called after _merge_items so that doc.items reflects the final SI item list.
+    Merge key: parent_item (item_code) + sub_item_code.
+    Summed fields: qty, amount, custom_net_weight, custom__cif_total_amount,
+                   custom___cif_total_amount.
+    All other fields are taken from the first row in the group.
 
-    Linkage key
-    -----------
-    DN Sub Item.parent_row_uid  ==  DN Item.custom_row_uid  ==  SI Item.custom_row_uid
-    custom_row_uid has no_copy=0 on both DN Item and SI Item, so get_mapped_doc
-    auto-copies it from DN → SI.
+    SI item lookup uses parent_item (item_code) instead of parent_row_uid so that
+    sub items linked to DN rows that were merged away (whose custom_row_uid is no
+    longer present in doc.items) are still resolved correctly via the surviving
+    merged SI item.
 
-    NULL parent_row_uid (legacy / orphaned rows)
-    --------------------------------------------
-    DN sub items whose parent DN item had no custom_row_uid carry parent_row_uid=NULL.
-    These are carried forward as orphaned rows (parent_row_uid stays NULL on the SI).
-
-    Duplicate prevention
-    --------------------
-    Dedup key: (parent_row_uid, sub_item_code).  NULL parent_row_uid is valid as a
-    key value, correctly deduplicating orphaned rows on re-invoke.
+    NULL parent_item (legacy / orphaned rows)
+    -----------------------------------------
+    DN sub items without a parent_item are carried forward with parent_row_uid=NULL.
     """
     dn_sub_items = frappe.get_all(
         "Delivery Note Sub Items",
@@ -176,13 +181,13 @@ def _carry_forward_dn_sub_items(source_name, doc):
     if not dn_sub_items:
         return
 
-    # Build lookup: DN item custom_row_uid → SI item (post-merge).
-    # NULL custom_row_uid keys are excluded; the NULL path is handled explicitly below.
-    custom_uid_to_si_item = {
-        item.custom_row_uid: item
-        for item in doc.items
-        if item.custom_row_uid
-    }
+    # Build SI item lookup by item_code (post-merge).
+    # For kit items that have multiple rows, the first occurrence is used.
+    si_item_by_code = {}
+    for item in doc.items:
+        code = item.item_code
+        if code and code not in si_item_by_code:
+            si_item_by_code[code] = item
 
     # Snapshot of (parent_row_uid, sub_item_code) pairs already in the SI.
     existing = {
@@ -190,26 +195,48 @@ def _carry_forward_dn_sub_items(source_name, doc):
         for row in (doc.get("custom_sub_items") or [])
     }
 
+    # Group DN sub items by (parent_item, sub_item_code), preserving insertion order.
+    sub_groups = {}
+    sub_order = []
     for dn_sub in dn_sub_items:
-        if dn_sub.parent_row_uid:
-            # Linked sub item: find the SI item via the shared custom_row_uid.
-            si_item = custom_uid_to_si_item.get(dn_sub.parent_row_uid)
+        key = (dn_sub.parent_item or "", dn_sub.sub_item_code or "")
+        if key not in sub_groups:
+            sub_groups[key] = []
+            sub_order.append(key)
+        sub_groups[key].append(dn_sub)
+
+    for key in sub_order:
+        group = sub_groups[key]
+        parent_item, sub_item_code = key
+
+        if parent_item:
+            si_item = si_item_by_code.get(parent_item)
             if not si_item:
                 # Parent DN item was filtered out (fully billed) — skip.
                 continue
-            parent_uid_for_si = si_item.custom_row_uid
+            parent_uid_for_si = si_item.custom_row_uid or None
         else:
             # Orphaned sub item — carry forward with NULL parent_row_uid.
             parent_uid_for_si = None
 
-        if (parent_uid_for_si, dn_sub.sub_item_code) in existing:
+        if (parent_uid_for_si, sub_item_code) in existing:
             # Already present — skip to prevent duplication.
             continue
 
-        sub = frappe._dict({field: dn_sub.get(field) for field in _DN_TO_SI_SUB_ITEM_FIELDS})
+        # Build the SI sub item row from the first group member, then sum numeric fields.
+        first = group[0]
+        sub = frappe._dict({field: first.get(field) for field in _DN_TO_SI_SUB_ITEM_FIELDS})
         sub["parent_row_uid"] = parent_uid_for_si
+
+        if len(group) > 1:
+            sub["qty"]                       = sum(flt(r.qty)                       for r in group)
+            sub["amount"]                    = sum(flt(r.amount)                    for r in group)
+            sub["custom_net_weight"]         = sum(flt(r.custom_net_weight)         for r in group)
+            sub["custom__cif_total_amount"]  = sum(flt(r.custom__cif_total_amount)  for r in group)
+            sub["custom___cif_total_amount"] = sum(flt(r.custom___cif_total_amount) for r in group)
+
         doc.append("custom_sub_items", sub)
-        existing.add((parent_uid_for_si, dn_sub.sub_item_code))
+        existing.add((parent_uid_for_si, sub_item_code))
 
 
 def _get_fully_billed_dn_item_names(source_name):
