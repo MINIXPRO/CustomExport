@@ -11,8 +11,19 @@
   "sub_item_code",
   "sub_item_name",
   "sub_description",
+  "custom_sales_order_no",
+  "custom_customer_po_no",
   "qty",
+  "custom_unit_weight",
   "custom_net_weight",
+  "custom_box_no",
+  "custom_gross_weight",
+  "custom_length_inch",
+  "custom_width_inch",
+  "custom_height_inch",
+  "custom_box_type",
+  "custom_vol_cuft",
+  "custom_vol_cumtr",
   "base_rate",
   "rate",
   "amount",
@@ -21,6 +32,8 @@
   "custom__cif_total_amount",
   "custom_cif_unit_price_",
   "custom___cif_total_amount",
+  "custom_doc_audit_qty",
+  "custom_audit_remarks",
   "parent_row_uid"
  ],
  "fields": [
@@ -63,6 +76,16 @@
    "read_only": 1
   },
   {
+   "fieldname": "custom_sales_order_no",
+   "fieldtype": "Data",
+   "label": "Sales Order Number"
+  },
+  {
+   "fieldname": "custom_customer_po_no",
+   "fieldtype": "Data",
+   "label": "Customer PO Number"
+  },
+  {
    "fieldname": "qty",
    "fieldtype": "Float",
    "in_list_view": 1,
@@ -70,10 +93,62 @@
    "precision": "9"
   },
   {
+   "fieldname": "custom_unit_weight",
+   "fieldtype": "Float",
+   "label": "Unit Weight",
+   "precision": "5"
+  },
+  {
    "fieldname": "custom_net_weight",
    "fieldtype": "Float",
    "in_list_view": 1,
    "label": "Total Weight",
+   "precision": "5"
+  },
+  {
+   "fieldname": "custom_box_no",
+   "fieldtype": "Data",
+   "label": "Box No."
+  },
+  {
+   "fieldname": "custom_gross_weight",
+   "fieldtype": "Float",
+   "label": "Gross WT (Kg)",
+   "precision": "5"
+  },
+  {
+   "fieldname": "custom_length_inch",
+   "fieldtype": "Float",
+   "label": "L (Inch)",
+   "precision": "4"
+  },
+  {
+   "fieldname": "custom_width_inch",
+   "fieldtype": "Float",
+   "label": "W (Inch)",
+   "precision": "4"
+  },
+  {
+   "fieldname": "custom_height_inch",
+   "fieldtype": "Float",
+   "label": "H (Inch)",
+   "precision": "4"
+  },
+  {
+   "fieldname": "custom_box_type",
+   "fieldtype": "Data",
+   "label": "Box Type"
+  },
+  {
+   "fieldname": "custom_vol_cuft",
+   "fieldtype": "Float",
+   "label": "Vol. (CuFt)",
+   "precision": "5"
+  },
+  {
+   "fieldname": "custom_vol_cumtr",
+   "fieldtype": "Float",
+   "label": "Vol (CuMtr)",
    "precision": "5"
   },
   {
@@ -137,6 +212,17 @@
    "precision": "2"
   },
   {
+   "fieldname": "custom_doc_audit_qty",
+   "fieldtype": "Float",
+   "label": "Doc Audit Qty",
+   "precision": "9"
+  },
+  {
+   "fieldname": "custom_audit_remarks",
+   "fieldtype": "Small Text",
+   "label": "Audit Remarks"
+  },
+  {
    "fieldname": "parent_row_uid",
    "fieldtype": "Data",
    "label": "Parent Row UID"
@@ -146,7 +232,7 @@
  "index_web_pages_for_search": 1,
  "istable": 1,
  "links": [],
- "modified": "2026-04-03 08:27:03.374967",
+ "modified": "2026-04-17 00:00:00.000000",
  "modified_by": "Administrator",
  "module": "Export",
  "name": "Delivery Note Sub Items",

@@ -35,7 +35,7 @@ ITEM_FIELDS = [
 #
 # Alignment rationale:
 #   custom_customer_order_number  not on PS Item → use existing custom_cust_po_no
-#   custom_customer_part_no       → custom_customer_part_number (pre-existing PS field)
+#   customer_item_code            → custom_customer_part_no     (standard DN field → PS custom field)
 #   actual_qty (standard DN)      → custom_total_available_quantity (existing PS custom)
 #   custom_net_weight             → custom_unit_weight  (existing PS custom)
 #   custom_net_wt                 → net_weight          (standard PS field)
@@ -46,7 +46,7 @@ ITEM_FIELDS = [
 # ---------------------------------------------------------------------------
 ITEM_FIELD_REMAP = {
     "custom_customer_order_number": "custom_cust_po_no",
-    "custom_customer_part_no":      "custom_customer_part_number",
+    "customer_item_code":           "custom_customer_part_no",
     "actual_qty":                   "custom_total_available_quantity",
     "custom_net_weight":            "custom_unit_weight",
     # "custom_net_wt":                "net_weight",

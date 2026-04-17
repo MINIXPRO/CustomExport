@@ -9,13 +9,24 @@ import frappe
 # parent_row_uid and read-only link fields are handled separately.
 # ---------------------------------------------------------------------------
 TEMPLATE_FIELDS = [
-    ("Parent Item",              "parent_item"),
-    ("Sub Item Code",            "sub_item_code"),
-    ("Sub Description",          "sub_description"),
-    ("Quantity",                 "qty"),
-    ("Total Weight (Kg)",        "custom_net_weight"),
-    ("Rate",                     "rate"),
-    ("Freight & Insurance %",    "custom_freight__insurance_"),
+    ("Sales Order Number",   "custom_sales_order_no"),
+    ("Parent Item Code",     "parent_item"),
+    ("Sub Item Code",        "sub_item_code"),
+    ("Customer Item Code",   "customer_item_code"),
+    ("Sub Item Description", "sub_description"),
+    ("Quantity",             "qty"),
+    ("Unit Weight",          "custom_unit_weight"),
+    ("Total Weight",         "custom_net_weight"),
+    ("Box No.",              "custom_box_no"),
+    ("Gross WT (Kg)",        "custom_gross_weight"),
+    ("L (Inch)",             "custom_length_inch"),
+    ("W (Inch)",             "custom_width_inch"),
+    ("H (Inch)",             "custom_height_inch"),
+    ("Box Type",             "custom_box_type"),
+    ("Vol. (CuFt)",          "custom_vol_cuft"),
+    ("Vol (CuMtr)",          "custom_vol_cumtr"),
+    ("Doc Audit Qty",        "custom_doc_audit_qty"),
+    ("Audit Remarks",        "custom_audit_remarks"),
 ]
 
 
@@ -74,10 +85,18 @@ def get_dn_sub_items_template(delivery_note=None):
     if delivery_note:
         try:
             dn = frappe.get_doc("Delivery Note", delivery_note)
+            # Build parent_item → customer_item_code map from DN item rows
+            parent_customer_item_map = {
+                str(item.item_code or "").strip(): (item.customer_item_code or "")
+                for item in (dn.items or [])
+            }
             for sub in (dn.custom_sub_items or []):
                 row = []
                 for _, fn in TEMPLATE_FIELDS:
-                    val = getattr(sub, fn, None)
+                    if fn == "customer_item_code":
+                        val = parent_customer_item_map.get(str(sub.parent_item or "").strip(), "")
+                    else:
+                        val = getattr(sub, fn, None)
                     row.append("" if val is None else val)
                 ws.append(row)
         except frappe.DoesNotExistError:

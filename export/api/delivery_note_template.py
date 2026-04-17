@@ -10,14 +10,14 @@ import frappe
 #
 # Key alignment changes vs old code:
 #   "Cust PO No"              → custom_customer_order_number  (was: custom_cust_po_no)
-#   "Customer Part No"        → custom_customer_part_no       (dedicated custom Data field on DNI)
+#   "Customer Part No"        → customer_item_code             (standard DN Item field)
 #   "Total Avilable quantity" → actual_qty                    (was: custom_total_available_quantity)
 # ---------------------------------------------------------------------------
 TEMPLATE_FIELDS = [
     ("Sales Order No",            "custom_sales_order_no"),
     ("Cust PO No",                "custom_customer_order_number"),
     ("Part No",                   "item_code"),
-    ("Customer Part No",          "custom_customer_part_no"),
+    ("Customer Item Code",         "customer_item_code"),
     ("Item Name",                 "item_name"),
     ("Quantity",                  "qty"),
     ("Rate",                      "rate"),
