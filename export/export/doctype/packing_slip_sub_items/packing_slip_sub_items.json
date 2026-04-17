@@ -28,7 +28,8 @@
   "custom_cif_unit_price",
   "custom__cif_total_amount",
   "custom_cif_unit_price_",
-  "custom___cif_total_amount"
+  "custom___cif_total_amount",
+  "parent_row_uid"
  ],
  "fields": [
   {
@@ -65,9 +66,8 @@
   },
   {
    "fieldname": "sub_description",
-   "fieldtype": "Small Text",
-   "label": "Sub Description",
-   "read_only": 1
+   "fieldtype": "Text Editor",
+   "label": "Sub Description"
   },
   {
    "fieldname": "qty",
@@ -86,55 +86,47 @@
   {
    "fieldname": "custom_unit_weight",
    "fieldtype": "Float",
-   "in_list_view": 0,
    "label": "Unit Weight",
    "precision": "5"
   },
   {
    "fieldname": "custom__gross_weight",
    "fieldtype": "Float",
-   "in_list_view": 0,
    "label": "Gross Weight",
    "precision": "5"
   },
   {
    "fieldname": "custom_box",
    "fieldtype": "Data",
-   "in_list_view": 0,
    "label": "Box"
   },
   {
    "fieldname": "custom_length",
    "fieldtype": "Float",
-   "in_list_view": 0,
    "label": "Length",
    "precision": "2"
   },
   {
    "fieldname": "custom_width",
    "fieldtype": "Float",
-   "in_list_view": 0,
    "label": "Width",
    "precision": "2"
   },
   {
    "fieldname": "custom_height",
    "fieldtype": "Float",
-   "in_list_view": 0,
    "label": "Height",
    "precision": "2"
   },
   {
    "fieldname": "custom_cubic_feet",
    "fieldtype": "Float",
-   "in_list_view": 0,
    "label": "Cubic Feet",
    "precision": "5"
   },
   {
    "fieldname": "custom_cubic_meter",
    "fieldtype": "Float",
-   "in_list_view": 0,
    "label": "Cubic Meter",
    "precision": "5"
   },
@@ -173,7 +165,6 @@
   {
    "fieldname": "custom_cif_unit_price",
    "fieldtype": "Currency",
-   "in_list_view": 0,
    "label": "CIF Unit Price (Company Currency)",
    "options": "Company:company:default_currency",
    "precision": "2",
@@ -182,7 +173,6 @@
   {
    "fieldname": "custom__cif_total_amount",
    "fieldtype": "Currency",
-   "in_list_view": 0,
    "label": "CIF Total Amount (Company Currency)",
    "options": "Company:company:default_currency",
    "precision": "2",
@@ -217,7 +207,7 @@
  "index_web_pages_for_search": 1,
  "istable": 1,
  "links": [],
- "modified": "2026-04-02 12:00:00.000000",
+ "modified": "2026-04-17 16:38:19.831448",
  "modified_by": "Administrator",
  "module": "Export",
  "name": "Packing Slip Sub Items",
