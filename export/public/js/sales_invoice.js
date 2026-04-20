@@ -898,7 +898,7 @@ function calculate_si_cif_totals(frm) {
 
     // Compute rounding error from local totals — no timeout, no async read from frm.doc
     if (frm.doc.docstatus === 0) {
-        let rounding_error = Math.floor((total_company - (total_currency * conversion_rate)) * 100) / 100;
+        let rounding_error = Math.trunc(Math.abs(total_company - (total_currency * conversion_rate)) * 100) / 100;
         if (flt(frm.doc.custom_rounding_error_currency_conversion) !== rounding_error) {
             frm.set_value("custom_rounding_error_currency_conversion", rounding_error);
         }
@@ -916,7 +916,7 @@ function calculate_rounding_error(frm) {
     let cif_total_company  = flt(frm.doc.custom_cif_total_amount_company_currency);
     let cif_total_currency = flt(frm.doc.custom_cif_total_amount_);
     let exchange_rate      = flt(frm.doc.conversion_rate) || 1;
-    let rounding_error     = Math.floor((cif_total_company - (cif_total_currency * exchange_rate)) * 100) / 100;
+    let rounding_error     = Math.trunc(Math.abs(cif_total_company - (cif_total_currency * exchange_rate)) * 100) / 100;
 
     // Skip set_value if value is unchanged — prevents dirtying the form unnecessarily
     if (flt(frm.doc.custom_rounding_error_currency_conversion) !== rounding_error) {
