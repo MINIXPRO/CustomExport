@@ -891,8 +891,13 @@ function calculate_si_cif_totals(frm) {
     frm.set_value("custom_total_amount", total_item_amount);
     frm.set_value("custom_total_company_currency", total_item_amount * conversion_rate);
 
-    // Recalculate rounding error after CIF total is updated
-    setTimeout(() => calculate_rounding_error(frm), 150);
+    // Compute rounding error from local totals — no timeout, no async read from frm.doc
+    if (frm.doc.docstatus === 0) {
+        frm.set_value(
+            "custom_rounding_error_currency_conversion",
+            total_company - (total_currency * conversion_rate)
+        );
+    }
 }
 
 
@@ -900,12 +905,17 @@ function calculate_si_cif_totals(frm) {
  * ROUNDING ERROR DUE TO CURRENCY CONVERSION
  ************************************/
 function calculate_rounding_error(frm) {
+    // Never write to submitted/cancelled docs — Frappe disallows field updates after submit
+    if (frm.doc.docstatus !== 0) return;
+
     let cif_total_company  = flt(frm.doc.custom_cif_total_amount_company_currency);
     let cif_total_currency = flt(frm.doc.custom_cif_total_amount_);
     let exchange_rate      = flt(frm.doc.conversion_rate) || 1;
-    let converted          = flt(cif_total_currency * exchange_rate, 9);
-    let rounding_error     = flt(cif_total_company - converted, 2);
-    frm.set_value("custom_rounding_error_currency_conversion", rounding_error);
+    // Use raw value — let the Currency field apply its own display precision
+    frm.set_value(
+        "custom_rounding_error_currency_conversion",
+        cif_total_company - (cif_total_currency * exchange_rate)
+    );
 }
 
 
