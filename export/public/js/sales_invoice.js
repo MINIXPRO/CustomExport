@@ -7,7 +7,6 @@ frappe.ui.form.on("Sales Invoice", {
         toggle_cif_total_by_currency(frm);
         toggle_sub_items_columns(frm);
         hide_items_rows(frm);
-        calculate_rounding_error(frm);
         // recalculate_si_totals(frm);
 
         setup_items_grid_template_buttons(frm);
@@ -38,6 +37,10 @@ frappe.ui.form.on("Sales Invoice", {
     currency(frm) {
         toggle_cif_total_by_currency(frm);
         calculate_si_cif_totals(frm);
+    },
+
+    conversion_rate(frm) {
+        calculate_rounding_error(frm);
     },
 
     validate(frm) {
@@ -379,6 +382,8 @@ function hide_items_rows(frm) {
 }
 
 function carry_forward_sub_items(frm) {
+    // Only run for genuinely new (unsaved) documents — prevents dirty state on open
+    if (!frm.is_new()) return;
     // Never mutate a submitted or cancelled document
     if (frm.doc.docstatus !== 0) return;
 
@@ -893,10 +898,10 @@ function calculate_si_cif_totals(frm) {
 
     // Compute rounding error from local totals — no timeout, no async read from frm.doc
     if (frm.doc.docstatus === 0) {
-        frm.set_value(
-            "custom_rounding_error_currency_conversion",
-            total_company - (total_currency * conversion_rate)
-        );
+        let rounding_error = total_company - (total_currency * conversion_rate);
+        if (flt(frm.doc.custom_rounding_error_currency_conversion) !== rounding_error) {
+            frm.set_value("custom_rounding_error_currency_conversion", rounding_error);
+        }
     }
 }
 
@@ -911,11 +916,12 @@ function calculate_rounding_error(frm) {
     let cif_total_company  = flt(frm.doc.custom_cif_total_amount_company_currency);
     let cif_total_currency = flt(frm.doc.custom_cif_total_amount_);
     let exchange_rate      = flt(frm.doc.conversion_rate) || 1;
-    // Use raw value — let the Currency field apply its own display precision
-    frm.set_value(
-        "custom_rounding_error_currency_conversion",
-        cif_total_company - (cif_total_currency * exchange_rate)
-    );
+    let rounding_error     = cif_total_company - (cif_total_currency * exchange_rate);
+
+    // Skip set_value if value is unchanged — prevents dirtying the form unnecessarily
+    if (flt(frm.doc.custom_rounding_error_currency_conversion) !== rounding_error) {
+        frm.set_value("custom_rounding_error_currency_conversion", rounding_error);
+    }
 }
 
 
