@@ -7,6 +7,7 @@ frappe.ui.form.on("Sales Invoice", {
         toggle_cif_total_by_currency(frm);
         toggle_sub_items_columns(frm);
         hide_items_rows(frm);
+        calculate_rounding_error(frm);
         // recalculate_si_totals(frm);
 
         setup_items_grid_template_buttons(frm);
@@ -889,6 +890,20 @@ function calculate_si_cif_totals(frm) {
     let conversion_rate = flt(frm.doc.conversion_rate) || 1;
     frm.set_value("custom_total_amount", total_item_amount);
     frm.set_value("custom_total_company_currency", total_item_amount * conversion_rate);
+
+    // Recalculate rounding error after CIF total is updated
+    setTimeout(() => calculate_rounding_error(frm), 150);
+}
+
+
+/************************************
+ * ROUNDING ERROR DUE TO CURRENCY CONVERSION
+ ************************************/
+function calculate_rounding_error(frm) {
+    let base_grand_total = flt(frm.doc.base_grand_total);
+    let cif_total_company = flt(frm.doc.custom_cif_total_amount_company_currency);
+    let rounding_error = flt(base_grand_total - cif_total_company, 2);
+    frm.set_value("custom_rounding_error_currency_conversion", rounding_error);
 }
 
 
