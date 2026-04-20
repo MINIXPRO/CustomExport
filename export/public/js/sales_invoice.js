@@ -900,9 +900,11 @@ function calculate_si_cif_totals(frm) {
  * ROUNDING ERROR DUE TO CURRENCY CONVERSION
  ************************************/
 function calculate_rounding_error(frm) {
-    let base_grand_total = flt(frm.doc.base_grand_total);
-    let cif_total_company = flt(frm.doc.custom_cif_total_amount_company_currency);
-    let rounding_error = flt(base_grand_total - cif_total_company, 2);
+    let cif_total_company  = flt(frm.doc.custom_cif_total_amount_company_currency);
+    let cif_total_currency = flt(frm.doc.custom_cif_total_amount_);
+    let exchange_rate      = flt(frm.doc.conversion_rate) || 1;
+    let converted          = flt(cif_total_currency * exchange_rate, 9);
+    let rounding_error     = flt(cif_total_company - converted, 2);
     frm.set_value("custom_rounding_error_currency_conversion", rounding_error);
 }
 
