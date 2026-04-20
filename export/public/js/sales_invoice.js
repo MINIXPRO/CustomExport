@@ -39,9 +39,9 @@ frappe.ui.form.on("Sales Invoice", {
         calculate_si_cif_totals(frm);
     },
 
-    // conversion_rate(frm) {
-    //     calculate_rounding_error(frm);
-    // },
+    conversion_rate(frm) {
+        calculate_rounding_error(frm);
+    },
 
     validate(frm) {
         // Recalculate CIF for all items rows (covers template uploads where field triggers don't fire)
@@ -909,20 +909,18 @@ function calculate_si_cif_totals(frm) {
 /************************************
  * ROUNDING ERROR DUE TO CURRENCY CONVERSION
  ************************************/
-// function calculate_rounding_error(frm) {
-//     // Never write to submitted/cancelled docs — Frappe disallows field updates after submit
-//     if (frm.doc.docstatus !== 0) return;
+function calculate_rounding_error(frm) {
+    if (frm.doc.docstatus !== 0) return;
 
-//     let cif_total_company  = flt(frm.doc.custom_cif_total_amount_company_currency);
-//     let cif_total_currency = flt(frm.doc.custom_cif_total_amount_);
-//     let exchange_rate      = flt(frm.doc.conversion_rate) || 1;
-//     let rounding_error     = Math.trunc(Math.abs(cif_total_company - (cif_total_currency * exchange_rate)) * 100) / 100;
+    let cif_total_company  = flt(frm.doc.custom_cif_total_amount_company_currency);
+    let cif_total_currency = flt(frm.doc.custom_cif_total_amount_);
+    let exchange_rate      = flt(frm.doc.conversion_rate) || 1;
+    let rounding_error     = Math.trunc(Math.abs(cif_total_company - (cif_total_currency * exchange_rate)) * 100) / 100;
 
-//     // Skip set_value if value is unchanged — prevents dirtying the form unnecessarily
-//     if (flt(frm.doc.custom_rounding_error_currency_conversion) !== rounding_error) {
-//         frm.set_value("custom_rounding_error_currency_conversion", rounding_error);
-//     }
-// }
+    if (flt(frm.doc.custom_rounding_error_currency_conversion) !== rounding_error) {
+        frm.set_value("custom_rounding_error_currency_conversion", rounding_error);
+    }
+}
 
 
 /************************************
