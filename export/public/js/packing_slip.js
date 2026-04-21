@@ -388,52 +388,50 @@ function set_currency(frm) {
 
 
 function carry_forward_sub_items(frm) {
-    // Never mutate a submitted or cancelled document
     if (frm.doc.docstatus !== 0) return;
-
-    // If custom_sub_items already populated, skip
     if (frm.doc.custom_sub_items && frm.doc.custom_sub_items.length > 0) return;
 
-    // Get Delivery Note reference from parent-level delivery_note field
     let delivery_note_ref = frm.doc.delivery_note;
+    if (!delivery_note_ref) return;
 
-    if (delivery_note_ref) {
-        frappe.call({
-            method: 'frappe.client.get',
-            args: {
-                doctype: 'Delivery Note',
-                name: delivery_note_ref
-            },
-            callback: function(r) {
+    // Item codes present in this PS — only carry sub items for matching parents
+    let ps_item_codes = new Set((frm.doc.items || []).map(r => r.item_code).filter(Boolean));
 
-                if (r.message && r.message.custom_sub_items && r.message.custom_sub_items.length > 0) {
-                    frm.doc.custom_sub_items = [];
-                    r.message.custom_sub_items.forEach(function(sub_item) {
-                        let new_sub = frm.add_child('custom_sub_items');
-                        new_sub.parent_row_uid = sub_item.parent_row_uid;
-                        new_sub.parent_item = sub_item.parent_item;
-                        new_sub.parent_item_name = sub_item.parent_item_name;
-                        new_sub.sub_item_code = sub_item.sub_item_code;
-                        new_sub.sub_item_name = sub_item.sub_item_name;
-                        new_sub.sub_description = sub_item.sub_description;
-                        new_sub.qty = sub_item.qty;
-                        new_sub.custom_net_weight = sub_item.custom_net_weight;
-                        new_sub.base_rate = sub_item.base_rate;
-                        new_sub.rate = sub_item.rate;
-                        new_sub.amount = sub_item.amount;
-                        new_sub.custom_freight__insurance_ = sub_item.custom_freight__insurance_;
-                        frappe.model.set_value(new_sub.doctype, new_sub.name, "custom_currency", r.message.currency);
-                        calculate_sub_item_cif_values(frm, "Packing Slip Sub Items", new_sub.name);
-                        // new_sub.custom_cif_unit_price = sub_item.custom_cif_unit_price;
-                        // new_sub.custom__cif_total_amount = sub_item.custom__cif_total_amount;
-                        // new_sub.custom_cif_unit_price_ = sub_item.custom_cif_unit_price_;
-                        // new_sub.custom___cif_total_amount = sub_item.custom___cif_total_amount;
-                    });
-                    frm.refresh_field('custom_sub_items');
-                }
-            }
-        });
-    }
+    frappe.call({
+        method: 'frappe.client.get',
+        args: { doctype: 'Delivery Note', name: delivery_note_ref },
+        callback: function(r) {
+            if (!r.message || !r.message.custom_sub_items || !r.message.custom_sub_items.length) return;
+
+            let carried = false;
+            r.message.custom_sub_items.forEach(function(sub_item) {
+                if (!ps_item_codes.has(sub_item.parent_item)) return;
+
+                let new_sub = frm.add_child('custom_sub_items');
+                new_sub.parent_row_uid           = sub_item.parent_row_uid;
+                new_sub.parent_item              = sub_item.parent_item;
+                new_sub.parent_item_name         = sub_item.parent_item_name;
+                new_sub.sub_item_code            = sub_item.sub_item_code;
+                new_sub.sub_item_name            = sub_item.sub_item_name;
+                new_sub.sub_description          = sub_item.sub_description;
+                new_sub.qty                      = sub_item.qty;
+                new_sub.custom_net_weight        = sub_item.custom_net_weight;
+                new_sub.custom_unit_weight       = sub_item.custom_unit_weight;
+                new_sub.custom__gross_weight     = sub_item.custom_gross_weight;
+                new_sub.custom_box               = sub_item.custom_box_no;
+                new_sub.custom_length            = sub_item.custom_length_inch;
+                new_sub.custom_width             = sub_item.custom_width_inch;
+                new_sub.custom_height            = sub_item.custom_height_inch;
+                new_sub.custom_cubic_feet        = sub_item.custom_vol_cuft;
+                new_sub.custom_cubic_meter       = sub_item.custom_vol_cumtr;
+                new_sub.custom_freight__insurance_ = sub_item.custom_freight__insurance_;
+                frappe.model.set_value(new_sub.doctype, new_sub.name, "custom_currency", r.message.currency);
+                calculate_sub_item_cif_values(frm, "Packing Slip Sub Items", new_sub.name);
+                carried = true;
+            });
+            if (carried) frm.refresh_field('custom_sub_items');
+        }
+    });
 }
 
 

@@ -15,6 +15,7 @@ TEMPLATE_FIELDS = [
     ("Customer Item Code",   "customer_item_code"),
     ("Sub Item Description", "sub_description"),
     ("Quantity",             "qty"),
+    ("Rate",                 "rate"),
     ("Unit Weight",          "custom_unit_weight"),
     ("Total Weight",         "custom_net_weight"),
     ("Box No.",              "custom_box_no"),

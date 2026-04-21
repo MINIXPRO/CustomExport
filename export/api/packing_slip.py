@@ -44,6 +44,37 @@ ITEM_FIELDS = [
 #   custom_l/w/h                  → custom_length/width/height (existing PS customs)
 #   custom_vol_cuft/cumtr         → custom_cubic_feet/meter    (existing PS customs)
 # ---------------------------------------------------------------------------
+# ---------------------------------------------------------------------------
+# Sub-item-level fields: SAME fieldname on both DN Sub Items and PS Sub Items.
+# CIF fields (read-only, recalculated on save) and rate/amount are excluded.
+# ---------------------------------------------------------------------------
+SUB_ITEM_SAME_FIELDS = [
+    "parent_item",
+    "parent_item_name",
+    "sub_item_code",
+    "sub_item_name",
+    "sub_description",
+    "qty",
+    "custom_net_weight",
+    "custom_unit_weight",
+    "custom_freight__insurance_",
+    "parent_row_uid",
+]
+
+# ---------------------------------------------------------------------------
+# Sub-item-level fields with DIFFERENT names on DN Sub Items vs PS Sub Items.
+# Key: DN Sub Items fieldname   →   Value: PS Sub Items fieldname
+# ---------------------------------------------------------------------------
+SUB_ITEM_FIELD_REMAP = {
+    "custom_box_no":       "custom_box",
+    "custom_gross_weight": "custom__gross_weight",
+    "custom_length_inch":  "custom_length",
+    "custom_width_inch":   "custom_width",
+    "custom_height_inch":  "custom_height",
+    "custom_vol_cuft":     "custom_cubic_feet",
+    "custom_vol_cumtr":    "custom_cubic_meter",
+}
+
 ITEM_FIELD_REMAP = {
     "custom_customer_order_number": "custom_cust_po_no",
     "customer_item_code":           "custom_customer_part_no",
@@ -114,5 +145,20 @@ def make_packing_slip_custom(source_name, target_doc=None):
         # (which does net_weight × qty) gives the correct package total.
         if hasattr(dn_item, "weight_per_unit"):
             ps_item.net_weight = flt(dn_item.weight_per_unit)
+
+    # --- Carry forward sub items (only for parent items present in this PS) ---
+    if dn.custom_sub_items:
+        ps_item_codes = {ps_item.item_code for ps_item in doc.items}
+        for sub in dn.custom_sub_items:
+            parent_item = (sub.parent_item or "").strip()
+            if parent_item not in ps_item_codes:
+                continue
+            new_sub = doc.append("custom_sub_items", {})
+            for field in SUB_ITEM_SAME_FIELDS:
+                if hasattr(sub, field):
+                    setattr(new_sub, field, getattr(sub, field))
+            for src_f, dst_f in SUB_ITEM_FIELD_REMAP.items():
+                if hasattr(sub, src_f):
+                    setattr(new_sub, dst_f, getattr(sub, src_f))
 
     return doc
