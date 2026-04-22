@@ -202,6 +202,24 @@ def _carry_forward_dn_sub_items(source_name, doc):
         if code and code not in si_item_by_code:
             si_item_by_code[code] = item
 
+    # Build row-wise uid → Customer PO Number map for sub items.
+    # Uses each SI item's sales_order reference so multi-SO invoices are handled correctly.
+    sub_so_names = list({item.sales_order for item in doc.items if getattr(item, "sales_order", None)})
+    sub_so_po_map = {}
+    if sub_so_names:
+        sub_so_rows = frappe.get_all(
+            "Sales Order",
+            filters={"name": ["in", sub_so_names]},
+            fields=["name", "po_no"],
+        )
+        sub_so_po_map = {r.name: r.po_no for r in sub_so_rows if r.po_no}
+
+    uid_to_po_no = {
+        item.custom_row_uid: sub_so_po_map[item.sales_order]
+        for item in doc.items
+        if item.custom_row_uid and getattr(item, "sales_order", None) in sub_so_po_map
+    }
+
     # Snapshot of (parent_row_uid, sub_item_code) pairs already in the SI.
     existing = {
         (row.parent_row_uid, row.sub_item_code)
@@ -241,6 +259,7 @@ def _carry_forward_dn_sub_items(source_name, doc):
         sub = frappe._dict({field: first.get(field) for field in _DN_TO_SI_SUB_ITEM_FIELDS})
         sub["parent_row_uid"] = parent_uid_for_si
         sub["customer_item_code"] = customer_item_map.get(first.sub_item_code) or None
+        sub["custom_customer_po_no"] = uid_to_po_no.get(parent_uid_for_si)
 
         if len(group) > 1:
             sub["qty"]                       = sum(flt(r.qty)                       for r in group)
@@ -390,16 +409,23 @@ def make_sales_invoice_custom(source_name, target_doc=None, args=None):
     for idx, item in enumerate(doc.items, start=1):
         item.idx = idx
 
-    # 5. Carry custom_customer_order_number from DN Item to SI Item (by item_code).
-    dn_items_for_order = frappe.get_all(
-        "Delivery Note Item",
-        filters={"parent": source_name},
-        fields=["item_code", "custom_customer_order_number"],
-    )
-    dn_order_map = {d.item_code: d.custom_customer_order_number for d in dn_items_for_order if d.custom_customer_order_number}
+    # 5. Carry custom_customer_order_number row-wise from each SI item's linked Sales Order.
+    #    A single SI can contain items from multiple SOs — each row carries its own PO number.
+    #    si_item.sales_order is set by get_mapped_doc via DN Item field_map
+    #    ("against_sales_order" → "sales_order"), so it is reliable per row even after merging.
+    so_names = list({item.sales_order for item in doc.items if item.sales_order})
+    so_po_map = {}
+    if so_names:
+        so_po_rows = frappe.get_all(
+            "Sales Order",
+            filters={"name": ["in", so_names]},
+            fields=["name", "po_no"],
+        )
+        so_po_map = {r.name: r.po_no for r in so_po_rows if r.po_no}
+
     for si_item in doc.items:
-        if si_item.item_code in dn_order_map:
-            si_item.custom_customer_order_number = dn_order_map[si_item.item_code]
+        if si_item.sales_order in so_po_map:
+            si_item.custom_customer_order_number = so_po_map[si_item.sales_order]
 
     # 7. Reset weight_per_unit from Item Master
     item_codes = list({item.item_code for item in doc.items if item.item_code})

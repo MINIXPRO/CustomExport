@@ -213,9 +213,12 @@ def make_sales_invoice_custom(source_name, target_doc=None, ignore_permissions=F
                 if hasattr(so_item, field):
                     setattr(si_item, field, getattr(so_item, field))
 
-    # Carry forward customer_order_number (SO.po_no) to every SI item row.
-    for si_item in doc.items:
-        si_item.custom_customer_order_number = so.po_no
+    # Carry forward customer_order_number row-wise — only to items linked to this SO.
+    # Guard prevents overwriting PO numbers of items from other SOs already in the doc.
+    if so.po_no:
+        for si_item in doc.items:
+            if si_item.sales_order == so.name:
+                si_item.custom_customer_order_number = so.po_no
 
     _reset_weight_per_unit(doc)
     _carry_forward_so_sub_items(so, doc, field_remap=_SI_SUB_ITEM_REMAP)
