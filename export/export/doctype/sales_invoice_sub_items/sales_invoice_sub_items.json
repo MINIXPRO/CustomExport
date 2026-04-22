@@ -10,6 +10,8 @@
   "parent_item_name",
   "sub_item_code",
   "sub_item_name",
+  "customer_item_code",
+  "custom_customer_po_no",
   "sub_description",
   "qty",
   "custom_net_weight",
@@ -55,6 +57,18 @@
    "fieldtype": "Data",
    "in_list_view": 1,
    "label": "Sub Item Name",
+   "read_only": 1
+  },
+  {
+   "fieldname": "customer_item_code",
+   "fieldtype": "Data",
+   "label": "Customer Item Code",
+   "read_only": 1
+  },
+  {
+   "fieldname": "custom_customer_po_no",
+   "fieldtype": "Data",
+   "label": "Customer PO Number",
    "read_only": 1
   },
   {

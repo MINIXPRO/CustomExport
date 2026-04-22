@@ -9,15 +9,16 @@ import frappe
 # they are recalculated on save. Internal field custom_row_uid also excluded.
 # ---------------------------------------------------------------------------
 TEMPLATE_FIELDS = [
+    ("Customer PO Number",     "custom_customer_order_number"),
     ("Item Code",              "item_code"),
     ("Item Name",              "item_name"),
+    ("Customer Item Code",     "customer_item_code"),
     ("Description",            "description"),
     ("Qty",                    "qty"),
     ("UOM",                    "uom"),
     ("Rate",                   "rate"),
     ("Amount",                 "amount"),
     ("HSN/SAC",                "gst_hsn_code"),
-    ("Customer Part No",       "custom_customer_part_no"),
     ("Freight & Insurance %",  "custom_freight__insurance_"),
     ("Duty Drawback",          "custom_duty_drawback"),
     ("Net Weight (Kg)",        "custom_net_weight"),

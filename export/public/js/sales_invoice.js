@@ -12,6 +12,17 @@ frappe.ui.form.on("Sales Invoice", {
         setup_items_grid_template_buttons(frm);
         setup_sub_items_grid_template_buttons(frm);
 
+        // Commercial Invoice PDF download — only for saved Export orders
+        if (!frm.is_new() && frm.doc.custom_order_type === "Export") {
+            frm.add_custom_button(__("Commercial Invoice PDF"), function () {
+                const url = frappe.urllib.get_full_url(
+                    "/api/method/export.api.pdf.download_commercial_invoice_pdf?name=" +
+                    encodeURIComponent(frm.doc.name)
+                );
+                window.open(url, "_blank");
+            }, __("Print"));
+        }
+
         // Sub-items table configuration (only if field exists)
         if (frm.fields_dict.custom_sub_items) {
             frm.fields_dict.custom_sub_items.grid.cannot_add_rows = true;
@@ -40,7 +51,9 @@ frappe.ui.form.on("Sales Invoice", {
     },
 
     conversion_rate(frm) {
-        calculate_rounding_error(frm);
+        // Re-run the full totals function so rounding error is computed
+        // from freshly summed locals — not from stale frm.doc values.
+        calculate_si_cif_totals(frm);
     },
 
     validate(frm) {
@@ -420,6 +433,8 @@ function carry_forward_sub_items(frm) {
                         new_sub.parent_item_name = sub_item.parent_item_name;
                         new_sub.sub_item_code = sub_item.sub_item_code;
                         new_sub.sub_item_name = sub_item.sub_item_name;
+                        new_sub.customer_item_code = sub_item.customer_item_code;
+                        new_sub.custom_customer_po_no = sub_item.custom_customer_po_no;
                         new_sub.sub_description = sub_item.sub_description;
                         new_sub.qty = sub_item.qty;
                         new_sub.custom_net_weight = sub_item.custom_net_weight;
@@ -431,8 +446,7 @@ function carry_forward_sub_items(frm) {
                         new_sub.custom__cif_total_amount = sub_item.custom__cif_total_amount;
                         new_sub.custom_cif_unit_price_ = sub_item.custom_cif_unit_price_;
                         new_sub.custom___cif_total_amount = sub_item.custom___cif_total_amount;
-                        new_sub.duty_drawback = sub_item.duty_drawback
-;
+                        new_sub.duty_drawback = sub_item.duty_drawback;
                     });
                     frm.refresh_field('custom_sub_items');
                 }
@@ -906,21 +920,8 @@ function calculate_si_cif_totals(frm) {
 }
 
 
-/************************************
- * ROUNDING ERROR DUE TO CURRENCY CONVERSION
- ************************************/
-function calculate_rounding_error(frm) {
-    if (frm.doc.docstatus !== 0) return;
-
-    let cif_total_company  = flt(frm.doc.custom_cif_total_amount_company_currency);
-    let cif_total_currency = flt(frm.doc.custom_cif_total_amount_);
-    let exchange_rate      = flt(frm.doc.conversion_rate) || 1;
-    let rounding_error     = Math.trunc(Math.abs(cif_total_company - (cif_total_currency * exchange_rate)) * 100) / 100;
-
-    if (flt(frm.doc.custom_rounding_error_currency_conversion) !== rounding_error) {
-        frm.set_value("custom_rounding_error_currency_conversion", rounding_error);
-    }
-}
+// calculate_rounding_error() removed — rounding error is now computed
+// exclusively inside calculate_si_cif_totals(), after totals are final.
 
 
 /************************************

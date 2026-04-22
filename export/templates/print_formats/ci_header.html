@@ -1,0 +1,128 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body { font-family: Arial, Helvetica, sans-serif; font-size: 10px; }
+    table { border-collapse: collapse; width: 100%; }
+  </style>
+</head>
+<body>
+
+{# ── Block 1 & 2 & 3: Company logo / COMMERCIAL INVOICE / Invoice No+Date ── #}
+<table style="border-collapse:collapse; border:1px solid #000; width:100%;">
+  <tbody>
+    <tr>
+      <td style="border:1px solid #000; padding:1px; width:30%;">
+        <img src="{{ img_src }}" style="max-height:60px; display:block;">
+      </td>
+      <td style="border:1px solid #000; padding:1px; text-align:right; width:70%;">
+        <h3 style="margin:0; font-size:15px;"><b>Global Mining Equipments</b></h3>
+        <span style="font-size:10px;">BIPRANNAPARA, P.O.BEGRI, PS-DOMJUR,</span><br>
+        <span style="font-size:10px;">NEAR SRIJAN INDUSTRIAL LOGISTICS PARK, GATE NO.2</span><br>
+        <span style="font-size:10px;">HOWRAH, WEST BENGAL, 711411</span><br>
+        <span style="font-size:10px;">GSTIN : 19AATFG3239L1ZQ</span>
+      </td>
+    </tr>
+    <tr>
+      <td colspan="2" style="border:1px solid #000; text-align:center; padding:1px;">
+        <b>COMMERCIAL INVOICE</b>
+      </td>
+    </tr>
+    <tr>
+      <td style="border:1px solid #000; padding:1px; font-size:10px; width:50%;">
+        <b>Invoice No :</b> {{ doc.name }}
+      </td>
+      <td style="border:1px solid #000; padding:1px; font-size:10px; text-align:right; width:50%;">
+        <b>Invoice Date :</b> {{ doc.get_formatted("posting_date") }}
+      </td>
+    </tr>
+  </tbody>
+</table>
+
+{# ── Block 4: CONSIGNEE / BUYER / THIRD PARTY / Mode / Ports ── #}
+<table style="border-collapse:collapse; border:1px solid #000; border-top:none; font-size:10px; width:100%;">
+  <tbody>
+    <tr style="background-color:#7fa6c7; color:#fff;">
+      <td style="border:1px solid #000; padding:1px; width:25%;"><b>CONSIGNEE :</b></td>
+      <td style="border:1px solid #000; padding:1px; width:25%;"><b>BUYER :</b></td>
+      <td style="border:1px solid #000; padding:1px; width:25%;"><b>THIRD PARTY :</b></td>
+      <td style="border:1px solid #000; padding:1px; width:25%;"></td>
+    </tr>
+    <tr>
+      {# Consignee cell #}
+      {% if doc.custom_mode == "By Air" %}
+      <td style="border:1px solid #000; padding:1px; vertical-align:top;">
+        Z to Order<br>NA
+      </td>
+      {% elif doc.custom_mode == "By Sea" %}
+      <td style="border:1px solid #000; padding:1px; vertical-align:top;">
+        {% set words = doc.customer.split(" ") %}
+        {% set abbr = namespace(val="") %}
+        {% for w in words %}{% if w %}{% set abbr.val = abbr.val + w[0] %}{% endif %}{% endfor %}
+        <b>{{ abbr.val.upper() }}</b><br>NA
+      </td>
+      {% else %}
+      <td style="border:1px solid #000; padding:1px; vertical-align:top;">
+        {{ doc.customer or "NA" }}<br>{{ doc.shipping_address or "NA" }}
+      </td>
+      {% endif %}
+
+      {# Buyer cell #}
+      <td style="border:1px solid #000; padding:1px; vertical-align:top;">
+        {% if doc.customer_address %}{{ doc.customer_address }}<br>{% endif %}
+        {{ doc.address_display or "" }}
+      </td>
+
+      {# Third Party cell #}
+      <td style="border:1px solid #000; padding:1px; vertical-align:top;">
+        {% if doc.custom_third_party %}
+          {% set tp = frappe.get_doc("Address", doc.custom_third_party) %}
+          <b>{{ tp.address_title or "" }}</b><br>
+          {{ tp.address_line1 or "" }}<br>
+          {% if tp.address_line2 %}{{ tp.address_line2 }}<br>{% endif %}
+          {{ tp.city or "" }}{% if tp.pincode %} - {{ tp.pincode }}{% endif %}<br>
+          {{ tp.state or "" }}<br>
+          {{ tp.country or "" }}<br>
+          {% if tp.gstin %}GSTIN: {{ tp.gstin }}{% endif %}
+        {% else %}NA{% endif %}
+      </td>
+
+      {# Mode / Ports cell #}
+      <td style="border:1px solid #000; padding:1px; vertical-align:top;">
+        <b>Mode :</b> {{ doc.custom_mode or "" }}<br>
+        <b>Loading Port :</b> {{ doc.custom_loading_port or "" }}<br>
+        <b>Discharge Port :</b> {{ doc.custom_discharge_port or "" }}<br>
+        <b>Final Destination :</b> {{ doc.custom_final_destination or "" }}<br>
+        <b>Incoterms :</b> {{ doc.incoterm or "" }}<br>
+        <b>Payment Terms :</b> {{ doc.payment_terms_template or "" }}
+      </td>
+    </tr>
+  </tbody>
+</table>
+
+{# ── Block 5: Item column header row ── #}
+<table style="border-collapse:collapse; border:1px solid #000; border-top:none; width:100%;">
+  <thead>
+    <tr style="background:#7fa6c7; color:#fff; text-align:center;">
+      <th style="border:1px solid #000; padding:4px 6px; background:#7fa6c7; width:3.5%;  line-height:1.2; vertical-align:middle;">S.No</th>
+      <th style="border:1px solid #000; padding:4px 6px; background:#7fa6c7; width:12%;   line-height:1.2; vertical-align:middle;">Duty Drawback Tarrif Code</th>
+      <th style="border:1px solid #000; padding:4px 6px; background:#7fa6c7; width:6%;    line-height:1.2; vertical-align:middle;">Buyer Order No</th>
+      <th style="border:1px solid #000; padding:4px 6px; background:#7fa6c7; width:6.5%;  line-height:1.2; vertical-align:middle;">Customer Part No</th>
+      <th style="border:1px solid #000; padding:4px 6px; background:#7fa6c7; width:6%;    line-height:1.2; vertical-align:middle;">GMEI Part No</th>
+      <th style="border:1px solid #000; padding:4px 6px; background:#7fa6c7; width:27%;   line-height:1.2; vertical-align:middle;">Item Description</th>
+      <th style="border:1px solid #000; padding:4px 6px; background:#7fa6c7; width:5%;    line-height:1.2; vertical-align:middle;">Net Weight (KG)</th>
+      <th style="border:1px solid #000; padding:4px 6px; background:#7fa6c7; width:4%;    line-height:1.2; vertical-align:middle;">Qty.(No./<br>Set)</th>
+      <th style="border:1px solid #000; padding:4px 6px; background:#7fa6c7; width:4%;    line-height:1.2; vertical-align:middle;">Total Qty.(No./<br>Set)</th>
+      <th style="border:1px solid #000; padding:4px 6px; background:#7fa6c7; width:5.5%;  line-height:1.2; vertical-align:middle;">UNIT PRICE ({{ doc.currency }})</th>
+      <th style="border:1px solid #000; padding:4px 6px; background:#7fa6c7; width:6%;    line-height:1.2; vertical-align:middle;">AMOUNT ({{ doc.currency }})</th>
+      <th style="border:1px solid #000; padding:4px 6px; background:#7fa6c7; width:6%;    line-height:1.2; vertical-align:middle;">Freight &amp; Insurance %</th>
+      <th style="border:1px solid #000; padding:4px 6px; background:#7fa6c7; width:5.5%;  line-height:1.2; vertical-align:middle;">CIF UNIT PRICE ({{ doc.currency }})</th>
+      <th style="border:1px solid #000; padding:4px 6px; background:#7fa6c7; width:7%;    line-height:1.2; vertical-align:middle;">CIF TOTAL AMOUNT ({{ doc.currency }})</th>
+    </tr>
+  </thead>
+</table>
+
+</body>
+</html>

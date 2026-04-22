@@ -9,8 +9,10 @@ import frappe
 # Read-only auto-populated fields (sub_item_name, parent_item_name) are excluded.
 # ---------------------------------------------------------------------------
 TEMPLATE_FIELDS = [
+    ("Customer PO Number",       "custom_customer_po_no"),
     ("Parent Item",              "parent_item"),
     ("Sub Item Code",            "sub_item_code"),
+    ("Customer Item Code",       "customer_item_code"),
     ("Sub Description",          "sub_description"),
     ("Quantity",                 "qty"),
     ("Total Weight (Kg)",        "custom_net_weight"),

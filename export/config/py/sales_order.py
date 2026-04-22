@@ -130,6 +130,17 @@ def _carry_forward_so_sub_items(so, doc, field_remap=None):
         if item.custom_row_uid
     }
 
+    # Build customer_item_code lookup from Item Customer Detail.
+    sub_item_codes = list({s.sub_item_code for s in so.custom_sub_items if s.sub_item_code})
+    customer_item_map = {}
+    if sub_item_codes and so.customer:
+        rows = frappe.get_all(
+            "Item Customer Detail",
+            filters={"parent": ["in", sub_item_codes], "customer_name": so.customer},
+            fields=["parent", "ref_code"],
+        )
+        customer_item_map = {r.parent: r.ref_code for r in rows}
+
     # Snapshot of (parent_row_uid, sub_item_code) pairs already in the doc.
     existing = {
         (row.parent_row_uid, row.sub_item_code)
@@ -155,6 +166,8 @@ def _carry_forward_so_sub_items(so, doc, field_remap=None):
 
         sub = frappe._dict({field: so_sub.get(field) for field in _SUB_ITEM_FIELDS})
         sub["parent_row_uid"] = parent_uid_for_target
+        sub["customer_item_code"] = customer_item_map.get(so_sub.sub_item_code) or None
+        sub["custom_customer_po_no"] = so.po_no or None
 
         # Apply any fieldname remaps (e.g. custom_duty_drawback → duty_drawback for SI).
         if field_remap:
@@ -199,6 +212,10 @@ def make_sales_invoice_custom(source_name, target_doc=None, ignore_permissions=F
             for field in _SO_EXPORT_ITEM_FIELDS:
                 if hasattr(so_item, field):
                     setattr(si_item, field, getattr(so_item, field))
+
+    # Carry forward customer_order_number (SO.po_no) to every SI item row.
+    for si_item in doc.items:
+        si_item.custom_customer_order_number = so.po_no
 
     _reset_weight_per_unit(doc)
     _carry_forward_so_sub_items(so, doc, field_remap=_SI_SUB_ITEM_REMAP)

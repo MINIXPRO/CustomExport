@@ -21,6 +21,7 @@ _DN_TO_SI_SUB_ITEM_FIELDS = [
     "custom__cif_total_amount",
     "custom_cif_unit_price_",
     "custom___cif_total_amount",
+    "custom_customer_po_no",
     "parent_row_uid",
 ]
 
@@ -181,6 +182,18 @@ def _carry_forward_dn_sub_items(source_name, doc):
     if not dn_sub_items:
         return
 
+    # Build customer_item_code lookup: sub_item_code → ref_code from Item Customer Detail.
+    customer = doc.customer or frappe.db.get_value("Sales Invoice", doc.name, "customer")
+    sub_item_codes = list({d.sub_item_code for d in dn_sub_items if d.sub_item_code})
+    customer_item_map = {}
+    if sub_item_codes and customer:
+        rows = frappe.get_all(
+            "Item Customer Detail",
+            filters={"parent": ["in", sub_item_codes], "customer_name": customer},
+            fields=["parent", "ref_code"],
+        )
+        customer_item_map = {r.parent: r.ref_code for r in rows}
+
     # Build SI item lookup by item_code (post-merge).
     # For kit items that have multiple rows, the first occurrence is used.
     si_item_by_code = {}
@@ -227,6 +240,7 @@ def _carry_forward_dn_sub_items(source_name, doc):
         first = group[0]
         sub = frappe._dict({field: first.get(field) for field in _DN_TO_SI_SUB_ITEM_FIELDS})
         sub["parent_row_uid"] = parent_uid_for_si
+        sub["customer_item_code"] = customer_item_map.get(first.sub_item_code) or None
 
         if len(group) > 1:
             sub["qty"]                       = sum(flt(r.qty)                       for r in group)
@@ -376,7 +390,18 @@ def make_sales_invoice_custom(source_name, target_doc=None, args=None):
     for idx, item in enumerate(doc.items, start=1):
         item.idx = idx
 
-    # 5. Reset weight_per_unit from Item Master
+    # 5. Carry custom_customer_order_number from DN Item to SI Item (by item_code).
+    dn_items_for_order = frappe.get_all(
+        "Delivery Note Item",
+        filters={"parent": source_name},
+        fields=["item_code", "custom_customer_order_number"],
+    )
+    dn_order_map = {d.item_code: d.custom_customer_order_number for d in dn_items_for_order if d.custom_customer_order_number}
+    for si_item in doc.items:
+        if si_item.item_code in dn_order_map:
+            si_item.custom_customer_order_number = dn_order_map[si_item.item_code]
+
+    # 7. Reset weight_per_unit from Item Master
     item_codes = list({item.item_code for item in doc.items if item.item_code})
     if item_codes:
         weight_map = {
@@ -387,7 +412,7 @@ def make_sales_invoice_custom(source_name, target_doc=None, args=None):
             if item.item_code in weight_map:
                 item.weight_per_unit = weight_map[item.item_code]
 
-    # 6. Carry forward DN sub items into the Sales Invoice sub items table.
+    # 8. Carry forward DN sub items into the Sales Invoice sub items table.
     _carry_forward_dn_sub_items(source_name, doc)
 
     return doc
