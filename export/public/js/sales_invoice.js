@@ -912,11 +912,17 @@ function calculate_si_cif_totals(frm) {
 
     // Compute rounding error from local totals — no timeout, no async read from frm.doc
     if (frm.doc.docstatus === 0) {
-        let rounding_error = Math.trunc(Math.abs(total_company - (total_currency * conversion_rate)) * 100) / 100;
+        let conversion_value = total_currency * conversion_rate;
+
+        let rounding_error = Math.abs(conversion_value - total_company);
+
+        // 2 decimal fix (proper rounding)
+        rounding_error = flt(rounding_error, 2);
+
         if (flt(frm.doc.custom_rounding_error_currency_conversion) !== rounding_error) {
             frm.set_value("custom_rounding_error_currency_conversion", rounding_error);
         }
-    }
+}
 }
 
 
