@@ -21,7 +21,7 @@ TEMPLATE_FIELDS = [
     ("HSN/SAC",                "gst_hsn_code"),
     ("Freight & Insurance %",  "custom_freight__insurance_"),
     ("Duty Drawback",          "custom_duty_drawback"),
-    ("Net Weight (Kg)",        "custom_net_weight"),
+    ("Total Weight",           "total_weight"),
 ]
 
 

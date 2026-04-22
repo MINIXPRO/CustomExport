@@ -910,14 +910,13 @@ function calculate_si_cif_totals(frm) {
     frm.set_value("custom_total_amount", total_item_amount);
     frm.set_value("custom_total_company_currency", total_item_amount * conversion_rate);
 
-    // Compute rounding error from local totals — no timeout, no async read from frm.doc
+    // Compute rounding error using 2-decimal rounded values to match visible UI totals
     if (frm.doc.docstatus === 0) {
-        let conversion_value = total_currency * conversion_rate;
-
-        let rounding_error = Math.abs(conversion_value - total_company);
-
-        // 2 decimal fix (proper rounding)
-        rounding_error = flt(rounding_error, 2);
+        let cif_total        = flt(total_currency, 2);
+        let company_total    = flt(total_company, 2);
+        let rate             = flt(conversion_rate, 2);
+        let conversion_value = flt(cif_total * rate, 2);
+        let rounding_error   = flt(Math.abs(conversion_value - company_total), 2);
 
         if (flt(frm.doc.custom_rounding_error_currency_conversion) !== rounding_error) {
             frm.set_value("custom_rounding_error_currency_conversion", rounding_error);
