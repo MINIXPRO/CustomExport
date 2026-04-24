@@ -16,6 +16,7 @@
   "qty",
   "custom_net_weight",
   "base_rate",
+  "amount_in_inr",
   "rate",
   "amount",
   "custom_freight__insurance_",
@@ -94,6 +95,14 @@
    "fieldname": "base_rate",
    "fieldtype": "Currency",
    "label": "Base Rate",
+   "options": "Company:company:default_currency",
+   "precision": "2",
+   "read_only": 1
+  },
+  {
+   "fieldname": "amount_in_inr",
+   "fieldtype": "Currency",
+   "label": "Amount in INR",
    "options": "Company:company:default_currency",
    "precision": "2",
    "read_only": 1

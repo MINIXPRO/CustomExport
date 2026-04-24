@@ -838,6 +838,7 @@ function calculate_sub_item_cif_values(frm, cdt, cdn) {
     // Calculate Amount (always)
     let amount = rate * qty;
     frappe.model.set_value(cdt, cdn, "amount", amount);
+    frappe.model.set_value(cdt, cdn, "amount_in_inr", flt(base_rate * qty, 2));
 
     // CIF calculations only for Export orders
     if (frm.doc.custom_order_type !== "Export") return;
