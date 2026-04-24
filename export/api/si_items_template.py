@@ -10,6 +10,7 @@ import frappe
 # ---------------------------------------------------------------------------
 TEMPLATE_FIELDS = [
     ("Customer PO Number",     "custom_customer_order_number"),
+    ("Sales Order",            "sales_order"),
     ("Item Code",              "item_code"),
     ("Item Name",              "item_name"),
     ("Customer Item Code",     "customer_item_code"),
