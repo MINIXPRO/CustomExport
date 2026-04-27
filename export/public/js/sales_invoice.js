@@ -785,8 +785,7 @@ function calculate_cif_values(frm, cdt, cdn) {
     let cif_total_company = cif_unit_company * qty;
 
     // Order currency CIF
-    let cif_unit_currency = rate + (rate * freight_pct / 100);
-    console.log(cif_unit_currency,qty,cif_unit_currency * qty)
+    let cif_unit_currency = flt(rate + (rate * freight_pct / 100), 2);
     let cif_total_currency = cif_unit_currency * qty;
 
     frappe.model.set_value(cdt, cdn, "custom_cif_unit_price", cif_unit_company);
