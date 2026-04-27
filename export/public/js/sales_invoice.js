@@ -54,6 +54,7 @@ frappe.ui.form.on("Sales Invoice", {
         // Re-run the full totals function so rounding error is computed
         // from freshly summed locals — not from stale frm.doc values.
         calculate_si_cif_totals(frm);
+        update_base_rate_for_all_items(frm);
     },
 
     validate(frm) {
@@ -807,7 +808,6 @@ function calculate_sub_item_base_rate(frm, cdt, cdn) {
     let row = locals[cdt][cdn];
     let rate = flt(row.rate);
     let conversion_rate = flt(frm.doc.conversion_rate);
-
     if (!conversion_rate) {
         conversion_rate = 1;
     }
@@ -989,6 +989,23 @@ function add_bank_charges_item(frm) {
     }
 }
 
+/**********************************************************
+ * Update base rate in child table based on conversion rate
+ **********************************************************/
+function update_base_rate_for_all_items(frm) {
+    let conversion_rate = flt(frm.doc.conversion_rate) || 1;
+
+    (frm.doc.custom_sub_items || []).forEach(row => {
+        let new_base_rate = flt(row.rate) * conversion_rate;
+
+        frappe.model.set_value(
+            row.doctype,
+            row.name,
+            "base_rate",
+            new_base_rate
+        );
+    });
+}
 
 /* ===== OLD CODE (COMMENTED) =====
 
