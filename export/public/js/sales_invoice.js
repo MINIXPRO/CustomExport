@@ -780,13 +780,17 @@ function calculate_cif_values(frm, cdt, cdn) {
     let qty = flt(row.qty);
     let freight_pct = flt(row.custom_freight__insurance_);
 
-    // Company currency CIF
-    let cif_unit_company = base_rate + (base_rate * freight_pct / 100);
-    let cif_total_company = cif_unit_company * qty;
-
     // Order currency CIF
     let cif_unit_currency = flt(rate + (rate * freight_pct / 100), 2);
     let cif_total_currency = cif_unit_currency * qty;
+    
+    let conversion_rate = flt(frm.doc.conversion_rate);
+    if (!conversion_rate) {
+        conversion_rate = 1;
+    }
+    // Company currency CIF
+    let cif_unit_company = flt(cif_unit_currency * conversion_rate, 2);
+    let cif_total_company = cif_unit_company * qty;
 
     frappe.model.set_value(cdt, cdn, "custom_cif_unit_price", cif_unit_company);
     frappe.model.set_value(cdt, cdn, "custom__cif_total_amount", cif_total_company);
@@ -842,13 +846,17 @@ function calculate_sub_item_cif_values(frm, cdt, cdn) {
     // CIF calculations only for Export orders
     if (frm.doc.custom_order_type !== "Export") return;
 
-    // Company currency CIF
-    let cif_unit_company = base_rate + (base_rate * freight_pct / 100);
-    let cif_total_company = cif_unit_company * qty;
-
     // Order currency CIF
-    let cif_unit_currency = rate + (rate * freight_pct / 100);
+    let cif_unit_currency = flt(rate + (rate * freight_pct / 100), 2);
     let cif_total_currency = cif_unit_currency * qty;
+    
+    let conversion_rate = flt(frm.doc.conversion_rate);
+    if (!conversion_rate) {
+        conversion_rate = 1;
+    }
+    // Company currency CIF
+    let cif_unit_company = flt(cif_unit_currency * conversion_rate, 2);
+    let cif_total_company = cif_unit_company * qty;
 
     frappe.model.set_value(cdt, cdn, "custom_cif_unit_price", cif_unit_company);
     frappe.model.set_value(cdt, cdn, "custom__cif_total_amount", cif_total_company);
