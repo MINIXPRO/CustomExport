@@ -930,30 +930,20 @@ function calculate_si_cif_totals(frm) {
         let round_off_inr =
             (frm.doc.custom_cif_total_amount_company_currency || 0) -
             (frm.doc.base_grand_total || 0);
-
         // INR LOGIC
-        if (round_off_inr >= 0) {
+        let selected_rows_inr = (frm.doc.taxes || []).filter(
+            d => d.custom_reduce_round_off === 1
+        );
 
-            let selected_rows_inr = (frm.doc.taxes || []).filter(
-                d => d.custom_reduce_round_off === 1
-            );
+        updated_total_inr = selected_rows_inr.reduce((sum, row) => {
+            return sum + (row.base_tax_amount || 0);
+        }, 0);
 
-            updated_total_inr = selected_rows_inr.reduce((sum, row) => {
-                return sum + (row.base_tax_amount || 0);
-            }, 0);
-
-            if (updated_total_inr > 0) {
-                round_off_inr -= updated_total_inr;
-            }
-
-            frm.set_value(
-                "custom_rounding_error_currency_conversion",
-                round_off_inr < 0 ? 0 : round_off_inr
-            );
-
-        } else {
-            frm.set_value("custom_rounding_error_currency_conversion", 0);
+        if (updated_total_inr > 0) {
+            round_off_inr -= updated_total_inr;
         }
+
+        frm.set_value("custom_rounding_error_currency_conversion",Math.abs(round_off_inr));
 
 
         // USD LOGIC
@@ -962,28 +952,19 @@ function calculate_si_cif_totals(frm) {
             (frm.doc.custom_cif_total_amount_ || 0) -
             (frm.doc.grand_total || 0);
 
-        if (round_off_usd >= 0) {
-
             let selected_rows_usd = (frm.doc.taxes || []).filter(
-                d => d.custom_reduce_round_off === 1
-            );
+            d => d.custom_reduce_round_off === 1
+        );
 
-            updated_total_usd = selected_rows_usd.reduce((sum, row) => {
-                return sum + (row.tax_amount || 0);
-            }, 0);
+        updated_total_usd = selected_rows_usd.reduce((sum, row) => {
+            return sum + (row.tax_amount || 0);
+        }, 0);
 
-            if (updated_total_usd > 0) {
-                round_off_usd -= updated_total_usd;
-            }
-
-            frm.set_value(
-                "custom_rounding_error_usd",
-                round_off_usd < 0 ? 0 : round_off_usd
-            );
-
-        } else {
-            frm.set_value("custom_rounding_error_usd", 0);
+        if (updated_total_usd > 0) {
+            round_off_usd -= updated_total_usd;
         }
+
+        frm.set_value("custom_rounding_error_usd",Math.abs(round_off_usd));
         // if (flt(frm.doc.custom_rounding_error_currency_conversion) !== rounding_error) {
         //     frm.set_value("custom_rounding_error_currency_conversion", rounding_error);
         // }
