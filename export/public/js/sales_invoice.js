@@ -925,11 +925,68 @@ function calculate_si_cif_totals(frm) {
         let rate             = flt(conversion_rate, 2);
         let conversion_value = flt(cif_total * rate, 2);
         let rounding_error   = flt(Math.abs(conversion_value - company_total), 2);
-
-        if (flt(frm.doc.custom_rounding_error_currency_conversion) !== rounding_error) {
-            frm.set_value("custom_rounding_error_currency_conversion", rounding_error);
+        // let round_off_inr = frm.doc.custom_cif_total_amount_company_currency - frm.doc.base_grand_total
+        let updated_total_inr=0;
+        let round_off_inr =
+            (frm.doc.custom_cif_total_amount_company_currency || 0) -
+            (frm.doc.base_grand_total || 0);
+        // If negative, make it zero
+        if (round_off_inr < 0) {
+            round_off_inr = 0;
+        }else{
+            // Filter rows where checkbox is checked
+            updated_total_inr=0
+            frm.refresh_field('taxes')
+            let selected_rows_inr = (frm.doc.taxes || []).filter(
+                d => d.custom_reduce_round_off === 1
+            );
+            // Sum base_tax_amount
+            updated_total_inr = selected_rows_inr.reduce((sum, row) => {
+                return sum + (row.base_tax_amount || 0);
+            }, 0);
         }
-}
+        console.log('=============================',updated_total_inr)
+        if(updated_total_inr>0){
+            round_off_inr = round_off_inr - updated_total_inr
+        }
+        console.log('xxxxxxxxxxxxxxxxxx',round_off_inr)
+        if (round_off_inr < 0) {
+            frm.set_value("custom_rounding_error_currency_conversion", 0);
+        }else{
+           frm.set_value("custom_rounding_error_currency_conversion", round_off_inr);
+        }
+
+        let updated_total_usd=0;
+        let round_off_usd =
+            (frm.doc.custom_cif_total_amount_ || 0) -
+            (frm.doc.grand_total || 0);
+        // If negative, make it zero
+        if (round_off_usd < 0) {
+            round_off_usd = 0;
+        }else{
+            updated_total_usd=0
+            // Filter rows where checkbox is checked
+            let selected_rows_usd = (frm.doc.taxes || []).filter(
+                d => d.custom_reduce_round_off === 1
+            );
+            // Sum base_tax_amount
+            updated_total_usd = selected_rows_usd.reduce((sum, row) => {
+                return sum + (row.tax_amount || 0);
+            }, 0);
+        }
+        if(updated_total_usd>0){
+            round_off_usd = round_off_usd - updated_total_usd
+        }
+        if (round_off_usd < 0) {
+            frm.set_value("custom_rounding_error_usd", 0);
+        }else{
+           frm.set_value("custom_rounding_error_usd", round_off_usd);
+        }
+        
+        // if (flt(frm.doc.custom_rounding_error_currency_conversion) !== rounding_error) {
+        //     frm.set_value("custom_rounding_error_currency_conversion", rounding_error);
+        // }
+    }
 }
 
 
