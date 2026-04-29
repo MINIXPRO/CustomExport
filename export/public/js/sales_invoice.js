@@ -940,7 +940,11 @@ function calculate_si_cif_totals(frm) {
         }, 0);
 
         if (updated_total_inr > 0) {
-            round_off_inr -= updated_total_inr;
+            if (round_off_inr < 0) {
+                round_off_inr += updated_total_inr;
+            } else {
+                round_off_inr -= updated_total_inr;
+            }
         }
 
         frm.set_value("custom_rounding_error_currency_conversion",Math.abs(round_off_inr));
@@ -961,7 +965,11 @@ function calculate_si_cif_totals(frm) {
         }, 0);
 
         if (updated_total_usd > 0) {
-            round_off_usd -= updated_total_usd;
+            if (round_off_usd < 0) {
+                round_off_usd += updated_total_usd;
+            } else {
+                round_off_usd -= updated_total_usd;
+            }
         }
 
         frm.set_value("custom_rounding_error_usd",Math.abs(round_off_usd));
