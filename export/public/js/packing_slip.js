@@ -59,11 +59,11 @@ frappe.ui.form.on("Packing Slip", {
 
     validate(frm) {
         // Recalculate all sub-item values first
-        if (frm.doc.custom_sub_items) {
-            frm.doc.custom_sub_items.forEach(row => {
-                calculate_sub_item_cif_values(frm, 'Packing Slip Sub Items', row.name);
-            });
-        }
+        // if (frm.doc.custom_sub_items) {
+        //     frm.doc.custom_sub_items.forEach(row => {
+        //         calculate_sub_item_cif_values(frm, 'Packing Slip Sub Items', row.name);
+        //     });
+        // }
 
         apply_parent_values_from_sub_items(frm);
         calculate_ps_cif_totals(frm);
@@ -81,6 +81,10 @@ frappe.ui.form.on("Packing Slip", {
         carry_forward_sub_items(frm);
         hide_items_rows(frm);
         // recalculate_all_cubic_rows(frm);
+    },
+
+    delivery_note(frm) {
+        carry_forward_sub_items(frm)
     }
 });
 
@@ -406,7 +410,8 @@ function set_currency(frm) {
 
 
 function carry_forward_sub_items(frm) {
-    if (frm.doc.docstatus !== 0) return;
+    if (frm.doc.docstatus !== 0 || !frm.is_new()) return;
+    frm.clear_table("custom_sub_items");
     if (frm.doc.custom_sub_items && frm.doc.custom_sub_items.length > 0) return;
 
     let delivery_note_ref = frm.doc.delivery_note;
@@ -414,7 +419,6 @@ function carry_forward_sub_items(frm) {
 
     // Item codes present in this PS — only carry sub items for matching parents
     let ps_item_codes = new Set((frm.doc.items || []).map(r => r.item_code).filter(Boolean));
-
     frappe.call({
         method: 'frappe.client.get',
         args: { doctype: 'Delivery Note', name: delivery_note_ref },
@@ -444,7 +448,7 @@ function carry_forward_sub_items(frm) {
                 new_sub.custom_cubic_meter       = sub_item.custom_vol_cumtr;
                 new_sub.custom_freight__insurance_ = sub_item.custom_freight__insurance_;
                 frappe.model.set_value(new_sub.doctype, new_sub.name, "custom_currency", r.message.currency);
-                calculate_sub_item_cif_values(frm, "Packing Slip Sub Items", new_sub.name);
+                // calculate_sub_item_cif_values(frm, "Packing Slip Sub Items", new_sub.name);
                 carried = true;
             });
             if (carried) frm.refresh_field('custom_sub_items');
@@ -754,18 +758,29 @@ frappe.ui.form.on("Packing Slip Item", {
 
 
 frappe.ui.form.on("Packing Slip Sub Items", {
-    rate(frm, cdt, cdn) {
-        calculate_sub_item_base_rate(frm, cdt, cdn);
-        calculate_sub_item_cif_values(frm, cdt, cdn);
+    custom_length(frm, cdt, cdn) {
+        calculate_cubic(frm, cdt, cdn);
     },
 
-    qty(frm, cdt, cdn) {
-        calculate_sub_item_cif_values(frm, cdt, cdn);
+    custom_width(frm, cdt, cdn) {
+        calculate_cubic(frm, cdt, cdn);
     },
 
-    custom_freight__insurance_(frm, cdt, cdn) {
-        calculate_sub_item_cif_values(frm, cdt, cdn);
-    }
+    custom_height(frm, cdt, cdn) {
+        calculate_cubic(frm, cdt, cdn);
+    },
+    // rate(frm, cdt, cdn) {
+    //     calculate_sub_item_base_rate(frm, cdt, cdn);
+    //     calculate_sub_item_cif_values(frm, cdt, cdn);
+    // },
+
+    // qty(frm, cdt, cdn) {
+    //     calculate_sub_item_cif_values(frm, cdt, cdn);
+    // },
+
+    // custom_freight__insurance_(frm, cdt, cdn) {
+    //     calculate_sub_item_cif_values(frm, cdt, cdn);
+    // }
 });
 
 
@@ -775,6 +790,9 @@ frappe.ui.form.on("Packing Slip Sub Items", {
 function recalculate_all_cubic_rows(frm) {
     if (frm.doc.docstatus !== 0) return;
     (frm.doc.items || []).forEach(row => {
+        calculate_cubic(frm, row.doctype, row.name);
+    });
+    (frm.doc.custom_sub_items || []).forEach(row => {
         calculate_cubic(frm, row.doctype, row.name);
     });
 }
