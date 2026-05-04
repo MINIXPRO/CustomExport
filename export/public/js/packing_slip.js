@@ -27,20 +27,26 @@ frappe.ui.form.on("Packing Slip", {
             frm.refresh_field('custom_sub_items');
         }
 
-        frm.add_custom_button('Generate Stamped PDF', function () {
+        frm.add_custom_button('Generate PDF', function () {
             frappe.call({
                 method: "export.api.custom_print.generate_stamped_pdf",
                 args: {
                     doctype: frm.doc.doctype,
                     name: frm.doc.name,
-                    print_format: "PL Custome - R Test design",
+                    print_formats: [
+                        "PL Custom",
+                        "PL Customer"
+                    ],
                     letterhead: "GME_078_Global Mining_Inv._Customer"
                 },
                 callback: function (r) {
                     if (r.message) {
-                        frappe.msgprint("PDF Generated");
-                        window.open(r.message.file_url);
+                        frappe.show_alert({
+                            message: __("Generated successfully."),
+                            indicator: 'green'
+                        }, 6);
                     }
+                    cur_frm.reload_doc();
                 }
             });
         });

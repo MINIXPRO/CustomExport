@@ -679,8 +679,8 @@ function calculate_cif_values(frm, cdt, cdn) {
 
     frappe.model.set_value(cdt, cdn, "custom_cif_unit_price", cif_unit_company);
     frappe.model.set_value(cdt, cdn, "custom__cif_total_amount", cif_total_company);
-    frappe.model.set_value(cdt, cdn, "custom_cif_unit_price_", cif_unit_currency);
-    frappe.model.set_value(cdt, cdn, "custom___cif_total_amount", cif_total_currency);
+    frappe.model.set_value(cdt, cdn, "custom_cif_unit_price_", (freight_pct && freight_pct > 0) ?  cif_unit_currency : 0);
+    frappe.model.set_value(cdt, cdn, "custom___cif_total_amount", (freight_pct && freight_pct > 0) ?  cif_total_currency : 0);
 
     // Recalculate totals after updating row values
     setTimeout(() => {
@@ -741,8 +741,8 @@ function calculate_sub_item_cif_values(frm, cdt, cdn) {
 
     frappe.model.set_value(cdt, cdn, "custom_cif_unit_price", cif_unit_company);
     frappe.model.set_value(cdt, cdn, "custom__cif_total_amount", cif_total_company);
-    frappe.model.set_value(cdt, cdn, "custom_cif_unit_price_", cif_unit_currency);
-    frappe.model.set_value(cdt, cdn, "custom___cif_total_amount", cif_total_currency);
+    frappe.model.set_value(cdt, cdn, "custom_cif_unit_price_", (freight_pct && freight_pct > 0) ? cif_unit_currency : 0);
+    frappe.model.set_value(cdt, cdn, "custom___cif_total_amount", (freight_pct && freight_pct > 0) ? cif_total_currency : 0);
 }
 
 
