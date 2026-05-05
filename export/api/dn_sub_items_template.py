@@ -12,7 +12,7 @@ TEMPLATE_FIELDS = [
     ("Sales Order Number",   "custom_sales_order_no"),
     ("Parent Item Code",     "parent_item"),
     ("Sub Item Code",        "sub_item_code"),
-    ("Customer Item Code",   "customer_item_code"),
+    ("Customer Item Code",   "customer_po_number"),
     ("Sub Item Description", "sub_description"),
     ("Quantity",             "qty"),
     ("Rate",                 "rate"),

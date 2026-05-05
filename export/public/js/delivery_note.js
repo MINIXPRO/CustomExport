@@ -450,6 +450,14 @@ function carry_forward_sub_items(frm) {
                                     new_sub.custom_unit_weight = weight;
                                     // Calculate net weight
                                     new_sub.custom_net_weight = flt(weight) * flt(new_sub.qty);
+                                    if (res.message.customer_items && frm.doc.customer) {
+                                        let matched_row = res.message.customer_items.find(row => 
+                                            row.customer_name === frm.doc.customer
+                                        );
+                                        if (matched_row) {
+                                            new_sub.customer_po_number = matched_row.ref_code;
+                                        }
+                                    }
                                 }
                             }
                         });

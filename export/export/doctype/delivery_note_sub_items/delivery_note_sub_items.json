@@ -10,6 +10,7 @@
   "parent_item_name",
   "sub_item_code",
   "sub_item_name",
+  "customer_po_number",
   "sub_description",
   "custom_sales_order_no",
   "custom_customer_po_no",
@@ -68,6 +69,12 @@
    "in_list_view": 1,
    "label": "Sub Item Name",
    "read_only": 1
+  },
+  {
+   "fieldname": "customer_po_number",
+   "fieldtype": "Data",
+   "in_list_view": 1,
+   "label": "Customer Item Code"
   },
   {
    "fieldname": "sub_description",
