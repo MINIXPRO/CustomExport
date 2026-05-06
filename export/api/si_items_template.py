@@ -104,19 +104,6 @@ def get_si_items_template(sales_invoice=None):
 
 @frappe.whitelist()
 def import_si_items(sales_invoice, file_url):
-    """
-    Import Sales Invoice Item rows from the custom XLSX / CSV template.
-
-    STRATEGY: Clear and Rebuild.
-    Uploaded rows are the single source of truth for si.items.
-
-    Row 1: labels      (ignored)
-    Row 2: fieldnames  (column-to-field mapping)
-    Row 3+: data rows  → become the complete new si.items
-
-    Existing rows are matched by item_code to preserve linked fields
-    (warehouse, SO reference, etc.). Template values are applied on top.
-    """
     import os
     from collections import defaultdict
 
@@ -137,20 +124,17 @@ def import_si_items(sales_invoice, file_url):
             from openpyxl import load_workbook
         except ImportError:
             frappe.throw("openpyxl is required. Run: pip install openpyxl")
-        wb   = load_workbook(file_path, data_only=True)
+        wb = load_workbook(file_path, data_only=True)
         rows = list(wb.active.iter_rows(values_only=True))
     elif ext == ".csv":
         import csv
         with open(file_path, newline="", encoding="utf-8-sig") as f:
             rows = [tuple(r) for r in csv.reader(f)]
     else:
-        frappe.throw(f"Unsupported file format '{ext}'. Upload a .xlsx or .csv file.")
+        frappe.throw(f"Unsupported file format '{ext}'.")
 
     if len(rows) < 3:
-        frappe.throw(
-            "The uploaded file must have at least 3 rows "
-            "(Row 1 = labels, Row 2 = fieldnames, Row 3+ = data)."
-        )
+        frappe.throw("File must have at least 3 rows.")
 
     fieldnames = [str(f).strip() if f is not None else None for f in rows[1]]
 
@@ -160,18 +144,21 @@ def import_si_items(sales_invoice, file_url):
     for data_row in rows[2:]:
         if all(v is None or str(v).strip() == "" for v in data_row):
             continue
+
         row_data = {}
         for col_idx, fn in enumerate(fieldnames):
             if not fn or fn == "None":
                 continue
             row_data[fn] = data_row[col_idx] if col_idx < len(data_row) else None
+
         item_code = str(row_data.get("item_code") or "").strip()
         if not item_code:
             continue
+
         parsed_rows.append((item_code, row_data))
 
     if not parsed_rows:
-        frappe.throw("No valid item rows found in the uploaded file.")
+        frappe.throw("No valid rows found in file.")
 
     si = frappe.get_doc("Sales Invoice", sales_invoice)
     frappe.has_permission("Sales Invoice", "write", si, throw=True)
@@ -183,7 +170,40 @@ def import_si_items(sales_invoice, file_url):
     si.items = []
     usage_counter = defaultdict(int)
 
+    # ✅ NEW: collect mismatches
+    invalid_rows = []
+
     for item_code, row_data in parsed_rows:
+        so_name = row_data.get("sales_order")
+        customer_po = str(row_data.get("custom_customer_order_number") or "").strip()
+
+        # 🔍 VALIDATION
+        if so_name:
+            try:
+                so_doc = frappe.get_doc("Sales Order", so_name)
+
+                # ⚠️ change field if needed (customer_po_no instead of po_no)
+                so_po = str(getattr(so_doc, "po_no", "") or "").strip()
+
+                if so_po and customer_po and so_po != customer_po:
+                    invalid_rows.append({
+                        "item_code": item_code,
+                        "sales_order": so_name,
+                        "so_po": so_po,
+                        "row_po": customer_po
+                    })
+                    continue  # ❌ skip row
+
+            except frappe.DoesNotExistError:
+                invalid_rows.append({
+                    "item_code": item_code,
+                    "sales_order": so_name,
+                    "so_po": "NOT FOUND",
+                    "row_po": customer_po
+                })
+                continue
+
+        # ✅ EXISTING LOGIC (unchanged)
         candidates = existing_map.get(item_code, [])
         idx = usage_counter[item_code]
         usage_counter[item_code] += 1
@@ -201,13 +221,60 @@ def import_si_items(sales_invoice, file_url):
                 continue
             if not hasattr(new_item, fn):
                 continue
-            setattr(new_item, fn, None if (value is None or str(value).strip() == "") else value)
+            setattr(
+                new_item,
+                fn,
+                None if (value is None or str(value).strip() == "") else value
+            )
 
-    total = len(parsed_rows)
+    total = len(si.items)
+
     si.save(ignore_permissions=True)
     frappe.db.commit()
 
+    # ✅ SHOW POPUP IF MISMATCHES FOUND
+    if invalid_rows:
+        message = """
+            <div style="max-height:300px; overflow:auto;">
+                <p style="margin-bottom:10px;">
+                    <b>Some rows were skipped due to PO mismatch:</b>
+                </p>
+
+                <table style="
+                    width:100%;
+                    border-collapse:separate;
+                    border-spacing:0;
+                    font-size:13px;
+                ">
+                    <thead>
+                        <tr style="background-color:#f7fafc;">
+                            <th style="padding:8px; border:1px solid #d1d8dd;">Item Code</th>
+                            <th style="padding:8px; border:1px solid #d1d8dd;">Sales Order</th>
+                            <th style="padding:8px; border:1px solid #d1d8dd;">SO PO</th>
+                            <th style="padding:8px; border:1px solid #d1d8dd;">File PO</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+        """
+
+        for r in invalid_rows:
+            message += f"""
+                <tr>
+                    <td style="padding:8px; border:1px solid #e4e7eb;">{r['item_code']}</td>
+                    <td style="padding:8px; border:1px solid #e4e7eb;">{r['sales_order']}</td>
+                    <td style="padding:8px; border:1px solid #e4e7eb; color:#d9534f;">{r['so_po']}</td>
+                    <td style="padding:8px; border:1px solid #e4e7eb; color:#5bc0de;">{r['row_po']}</td>
+                </tr>
+            """
+
+        message += """
+                </tbody>
+            </table>
+        </div>
+        """
+        frappe.msgprint(message)
+
     return {
-        "total":   total,
-        "message": f"Successfully imported {total} item row(s) into {sales_invoice}. Sales Invoice items replaced.",
+        "total": total,
+        "message": f"Imported {total} valid row(s). {len(invalid_rows)} row(s) skipped due to PO mismatch."
     }
