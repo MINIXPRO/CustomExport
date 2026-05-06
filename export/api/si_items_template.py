@@ -23,6 +23,7 @@ TEMPLATE_FIELDS = [
     ("Freight & Insurance %",  "custom_freight__insurance_"),
     ("Duty Drawback",          "custom_duty_drawback"),
     ("Total Weight",           "total_weight"),
+    ("Sales Order Item ID",    "so_detail"),
 ]
 
 
@@ -170,19 +171,28 @@ def import_si_items(sales_invoice, file_url):
     si.items = []
     usage_counter = defaultdict(int)
 
-    # ✅ NEW: collect mismatches
-    invalid_rows = []
+    # ✅ Collect issues
+    invalid_rows = []              # PO mismatch
+    missing_so_detail_rows = []   # Missing so_detail
 
     for item_code, row_data in parsed_rows:
         so_name = row_data.get("sales_order")
         customer_po = str(row_data.get("custom_customer_order_number") or "").strip()
 
-        # 🔍 VALIDATION
+        # ✅ FIRST: SO DETAIL VALIDATION
+        so_detail = str(row_data.get("so_detail") or "").strip()
+        if not so_detail:
+            missing_so_detail_rows.append({
+                "item_code": item_code,
+                "sales_order": so_name or "",
+                "row_po": customer_po
+            })
+            continue  # ❌ skip
+
+        # ✅ SECOND: PO VALIDATION (unchanged)
         if so_name:
             try:
                 so_doc = frappe.get_doc("Sales Order", so_name)
-
-                # ⚠️ change field if needed (customer_po_no instead of po_no)
                 so_po = str(getattr(so_doc, "po_no", "") or "").strip()
 
                 if so_po and customer_po and so_po != customer_po:
@@ -192,7 +202,7 @@ def import_si_items(sales_invoice, file_url):
                         "so_po": so_po,
                         "row_po": customer_po
                     })
-                    continue  # ❌ skip row
+                    continue
 
             except frappe.DoesNotExistError:
                 invalid_rows.append({
@@ -203,7 +213,7 @@ def import_si_items(sales_invoice, file_url):
                 })
                 continue
 
-        # ✅ EXISTING LOGIC (unchanged)
+        # ✅ EXISTING LOGIC (UNCHANGED)
         candidates = existing_map.get(item_code, [])
         idx = usage_counter[item_code]
         usage_counter[item_code] += 1
@@ -232,49 +242,66 @@ def import_si_items(sales_invoice, file_url):
     si.save(ignore_permissions=True)
     frappe.db.commit()
 
-    # ✅ SHOW POPUP IF MISMATCHES FOUND
-    if invalid_rows:
-        message = """
-            <div style="max-height:300px; overflow:auto;">
-                <p style="margin-bottom:10px;">
-                    <b>Some rows were skipped due to PO mismatch:</b>
-                </p>
+    # ✅ POPUP MESSAGE
+    if invalid_rows or missing_so_detail_rows:
+        message = '<div style="max-height:300px; overflow:auto;">'
 
-                <table style="
-                    width:100%;
-                    border-collapse:separate;
-                    border-spacing:0;
-                    font-size:13px;
-                ">
-                    <thead>
-                        <tr style="background-color:#f7fafc;">
-                            <th style="padding:8px; border:1px solid #d1d8dd;">Item Code</th>
-                            <th style="padding:8px; border:1px solid #d1d8dd;">Sales Order</th>
-                            <th style="padding:8px; border:1px solid #d1d8dd;">SO PO</th>
-                            <th style="padding:8px; border:1px solid #d1d8dd;">File PO</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-        """
-
-        for r in invalid_rows:
-            message += f"""
-                <tr>
-                    <td style="padding:8px; border:1px solid #e4e7eb;">{r['item_code']}</td>
-                    <td style="padding:8px; border:1px solid #e4e7eb;">{r['sales_order']}</td>
-                    <td style="padding:8px; border:1px solid #e4e7eb; color:#d9534f;">{r['so_po']}</td>
-                    <td style="padding:8px; border:1px solid #e4e7eb; color:#5bc0de;">{r['row_po']}</td>
-                </tr>
+        # 🔴 Missing SO Detail Table
+        if missing_so_detail_rows:
+            message += """
+                <p style="margin:10px 0;"><b>Rows skipped due to missing Sales Order Item ID:</b></p>
+                <table style="width:100%; border-collapse:separate; border-spacing:0; font-size:13px;">
+                <thead>
+                    <tr style="background-color:#fff3cd;">
+                        <th style="padding:8px; border:1px solid #d1d8dd;">Item Code</th>
+                        <th style="padding:8px; border:1px solid #d1d8dd;">Sales Order</th>
+                        <th style="padding:8px; border:1px solid #d1d8dd;">File PO</th>
+                    </tr>
+                </thead>
+                <tbody>
             """
+            for r in missing_so_detail_rows:
+                message += f"""
+                    <tr>
+                        <td style="padding:8px; border:1px solid #e4e7eb;">{r['item_code']}</td>
+                        <td style="padding:8px; border:1px solid #e4e7eb;">{r['sales_order']}</td>
+                        <td style="padding:8px; border:1px solid #e4e7eb;">{r['row_po']}</td>
+                    </tr>
+                """
+            message += "</tbody></table>"
 
-        message += """
-                </tbody>
-            </table>
-        </div>
-        """
+        # 🔵 PO Mismatch Table (your original)
+        if invalid_rows:
+            message += """
+                <p style="margin:10px 0;"><b>Rows skipped due to PO mismatch:</b></p>
+                <table style="width:100%; border-collapse:separate; border-spacing:0; font-size:13px;">
+                <thead>
+                    <tr style="background-color:#f7fafc;">
+                        <th style="padding:8px; border:1px solid #d1d8dd;">Item Code</th>
+                        <th style="padding:8px; border:1px solid #d1d8dd;">Sales Order</th>
+                        <th style="padding:8px; border:1px solid #d1d8dd;">SO PO</th>
+                        <th style="padding:8px; border:1px solid #d1d8dd;">File PO</th>
+                    </tr>
+                </thead>
+                <tbody>
+            """
+            for r in invalid_rows:
+                message += f"""
+                    <tr>
+                        <td style="padding:8px; border:1px solid #e4e7eb;">{r['item_code']}</td>
+                        <td style="padding:8px; border:1px solid #e4e7eb;">{r['sales_order']}</td>
+                        <td style="padding:8px; border:1px solid #e4e7eb; color:#d9534f;">{r['so_po']}</td>
+                        <td style="padding:8px; border:1px solid #e4e7eb; color:#5bc0de;">{r['row_po']}</td>
+                    </tr>
+                """
+            message += "</tbody></table>"
+
+        message += "</div>"
         frappe.msgprint(message)
 
     return {
         "total": total,
-        "message": f"Imported {total} valid row(s). {len(invalid_rows)} row(s) skipped due to PO mismatch."
+        "message": f"Imported {total} valid row(s). "
+                   f"{len(missing_so_detail_rows)} missing SO detail, "
+                   f"{len(invalid_rows)} PO mismatch."
     }
