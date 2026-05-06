@@ -465,16 +465,22 @@ function apply_parent_values_from_sub_items(frm) {
     let sub_items = frm.doc.custom_sub_items || [];
     if (!sub_items.length) return;
 
+    // =========================
+    // STEP 1: GROUP SUB ITEMS
+    // =========================
     let grouped = {};
+
     sub_items.forEach(sub => {
-        let key = sub.parent_row_uid;
-        if (!key) return;
+
+        // ✅ NEW KEY: parent item_code + qty
+        let key = `${sub.parent_item}__${flt(sub.qty)}`;
+        if (!sub.parent_item) return;
 
         if (!grouped[key]) {
             grouped[key] = {
                 rate_sum: 0,
-                qty: null,
-                has_qty: false,
+                qty: flt(sub.qty),
+                has_qty: true,
                 freight_pct: null,
                 has_freight: false
             };
@@ -482,12 +488,11 @@ function apply_parent_values_from_sub_items(frm) {
 
         grouped[key].rate_sum += flt(sub.rate);
 
-        if (!grouped[key].has_qty && (sub.qty || sub.qty === 0)) {
-            grouped[key].qty = flt(sub.qty);
-            grouped[key].has_qty = true;
-        }
-
-        if (!grouped[key].has_freight && (sub.custom_freight__insurance_ || sub.custom_freight__insurance_ === 0)) {
+        // take first freight value
+        if (
+            !grouped[key].has_freight &&
+            (sub.custom_freight__insurance_ || sub.custom_freight__insurance_ === 0)
+        ) {
             grouped[key].freight_pct = flt(sub.custom_freight__insurance_);
             grouped[key].has_freight = true;
         }
@@ -495,24 +500,40 @@ function apply_parent_values_from_sub_items(frm) {
 
     let conversion_rate = flt(frm.doc.conversion_rate) || 1;
 
+    // =========================
+    // STEP 2: APPLY TO PARENT
+    // =========================
     (frm.doc.items || []).forEach(row => {
-        let group = grouped[row.custom_row_uid];
+
+        // ✅ MATCH USING item_code + qty
+        let key = `${row.item_code}__${flt(row.qty)}`;
+        let group = grouped[key];
+
         if (!group) return;
 
         let next_rate = group.rate_sum;
-        let next_qty = group.has_qty ? group.qty : flt(row.qty);
-        let next_freight = group.has_freight ? group.freight_pct : flt(row.custom_freight__insurance_);
+        let next_qty = flt(row.qty);
+        let next_freight = group.has_freight
+            ? group.freight_pct
+            : flt(row.custom_freight__insurance_);
 
+        // Set rate
         frappe.model.set_value(row.doctype, row.name, "rate", next_rate);
 
-        if (group.has_qty) {
-            frappe.model.set_value(row.doctype, row.name, "qty", next_qty);
-        }
+        // Set qty (always safe here since matching is qty-based)
+        frappe.model.set_value(row.doctype, row.name, "qty", next_qty);
 
+        // Set freight if available
         if (group.has_freight) {
-            frappe.model.set_value(row.doctype, row.name, "custom_freight__insurance_", next_freight);
+            frappe.model.set_value(
+                row.doctype,
+                row.name,
+                "custom_freight__insurance_",
+                next_freight
+            );
         }
 
+        // Calculations
         let base_rate = next_rate * conversion_rate;
         let amount = next_rate * next_qty;
 
