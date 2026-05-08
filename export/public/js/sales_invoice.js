@@ -448,6 +448,22 @@ function carry_forward_sub_items(frm) {
                         new_sub.custom_cif_unit_price_ = sub_item.custom_cif_unit_price_;
                         new_sub.custom___cif_total_amount = sub_item.custom___cif_total_amount;
                         new_sub.duty_drawback = sub_item.duty_drawback;
+                        if (sub_item.sub_item_code) {
+                            frappe.call({
+                                method: 'frappe.client.get',
+                                args: {
+                                    doctype: 'Item',
+                                    name: sub_item.sub_item_code
+                                },
+                                callback: function(res) {
+                                    if (res.message) {
+                                        let weight = res.message.weight_per_unit || 0;
+                                        // Calculate net weight
+                                        new_sub.custom_net_weight = flt(weight) * flt(sub_item.qty);
+                                    }
+                                }
+                            });
+                        }
                     });
                     frm.refresh_field('custom_sub_items');
                 }
@@ -878,6 +894,21 @@ function calculate_sub_item_cif_values(frm, cdt, cdn) {
     // Company currency CIF
     let cif_unit_company = flt(cif_unit_currency * conversion_rate, 2);
     let cif_total_company = cif_unit_company * qty;
+    if (row.sub_item_code) {
+        frappe.call({
+            method: 'frappe.client.get',
+            args: {
+                doctype: 'Item',
+                name: row.sub_item_code
+            },
+            callback: function(res) {
+                if (res.message) {
+                    let weight = res.message.weight_per_unit || 0;
+                    frappe.model.set_value(cdt, cdn, "custom_net_weight", flt(weight) * flt(row.qty));
+                }
+            }
+        });
+    }
 
     frappe.model.set_value(cdt, cdn, "custom_cif_unit_price", cif_unit_company);
     frappe.model.set_value(cdt, cdn, "custom__cif_total_amount", cif_total_company);
