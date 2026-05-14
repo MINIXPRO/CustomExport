@@ -1004,8 +1004,14 @@ function calculate_si_cif_totals(frm) {
 
         // USD LOGIC
         let updated_total_usd = 0;
+        let total_amount_to_be_used = 0;
+        if (frm.doc.custom_cif_total_amount_==0){
+            total_amount_to_be_used = frm.doc.total
+        }else{
+            total_amount_to_be_used=frm.doc.custom_cif_total_amount_
+        }
         let round_off_usd =
-            (frm.doc.custom_cif_total_amount_ || 0) -
+            (total_amount_to_be_used || 0) -
             (frm.doc.grand_total || 0);
 
             let selected_rows_usd = (frm.doc.taxes || []).filter(
