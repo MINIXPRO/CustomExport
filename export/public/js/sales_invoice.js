@@ -829,8 +829,8 @@ function calculate_cif_values(frm, cdt, cdn) {
     let cif_unit_company = flt(cif_unit_currency * conversion_rate, 2);
     let cif_total_company = cif_unit_company * qty;
 
-    frappe.model.set_value(cdt, cdn, "custom_cif_unit_price", cif_unit_company);
-    frappe.model.set_value(cdt, cdn, "custom__cif_total_amount", cif_total_company);
+    frappe.model.set_value(cdt, cdn, "custom_cif_unit_price", (freight_pct && freight_pct > 0) ?  cif_unit_company : 0);
+    frappe.model.set_value(cdt, cdn, "custom__cif_total_amount", (freight_pct && freight_pct > 0) ?  cif_total_company : 0);
     frappe.model.set_value(cdt, cdn, "custom_cif_unit_price_", (freight_pct && freight_pct > 0) ?  cif_unit_currency : 0);
     frappe.model.set_value(cdt, cdn, "custom___cif_total_amount", (freight_pct && freight_pct > 0) ?  cif_total_currency : 0);
 
@@ -910,8 +910,8 @@ function calculate_sub_item_cif_values(frm, cdt, cdn) {
         });
     }
 
-    frappe.model.set_value(cdt, cdn, "custom_cif_unit_price", cif_unit_company);
-    frappe.model.set_value(cdt, cdn, "custom__cif_total_amount", cif_total_company);
+    frappe.model.set_value(cdt, cdn, "custom_cif_unit_price", (freight_pct && freight_pct > 0) ?  cif_unit_company : 0);
+    frappe.model.set_value(cdt, cdn, "custom__cif_total_amount",(freight_pct && freight_pct > 0) ?  cif_total_company : 0);
     frappe.model.set_value(cdt, cdn, "custom_cif_unit_price_", (freight_pct && freight_pct > 0) ? cif_unit_currency : 0);
     frappe.model.set_value(cdt, cdn, "custom___cif_total_amount", (freight_pct && freight_pct > 0) ? cif_total_currency : 0);
 }
@@ -979,8 +979,14 @@ function calculate_si_cif_totals(frm) {
         let rounding_error   = flt(Math.abs(conversion_value - company_total), 2);
         // let round_off_inr = frm.doc.custom_cif_total_amount_company_currency - frm.doc.base_grand_total
         let updated_total_inr = 0;
+        let total_amount_to_be_used_inr = 0;
+        if (frm.doc.custom_cif_total_amount_company_currency==0){
+            total_amount_to_be_used_inr = frm.doc.base_total
+        }else{
+            total_amount_to_be_used_inr=frm.doc.custom_cif_total_amount_company_currency
+        }
         let round_off_inr =
-            (frm.doc.custom_cif_total_amount_company_currency || 0) -
+            (total_amount_to_be_used_inr || 0) -
             (frm.doc.base_grand_total || 0);
         // INR LOGIC
         let selected_rows_inr = (frm.doc.taxes || []).filter(
