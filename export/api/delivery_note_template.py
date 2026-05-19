@@ -34,6 +34,7 @@ TEMPLATE_FIELDS = [
     ("Vol. (CuMtr)",              "custom_vol_cumtr"),
     ("Doc Audit Qty",             "custom_doc_audit_qty"),
     ("Audit Remarks",             "custom_audit_remarks"),
+    ("Sales Order Item ID",       "so_detail"),
 ]
 
 
@@ -262,7 +263,6 @@ def import_delivery_note_items(delivery_note, file_url):
     """
     import os
     from collections import defaultdict
-    from frappe.utils import flt
 
     # ── Resolve file path ────────────────────────────────────────────────────
     site_path = frappe.get_site_path()
@@ -322,47 +322,6 @@ def import_delivery_note_items(delivery_note, file_url):
     if not parsed_rows:
         frappe.throw("No valid item rows found in the uploaded file.")
 
-    # ── Validate SO item qty across all uploaded rows ─────────────────────
-    so_item_qty_map = defaultdict(float)
-    for item_code, row_data in parsed_rows:
-        so_name = str(row_data.get("custom_sales_order_no") or "").strip()
-        if so_name:
-            qty = row_data.get("qty") or 0
-            try:
-                qty = float(qty)
-            except (ValueError, TypeError):
-                qty = 0
-            so_item_qty_map[(so_name, item_code)] += qty
-
-    for (so_name, item_code), uploaded_qty in so_item_qty_map.items():
-        so_item = frappe.get_all(
-            "Sales Order Item",
-            filters={"parent": so_name, "item_code": item_code},
-            fields=["qty", "delivered_qty"]
-        )
-        if not so_item:
-            frappe.throw(
-                f"Item <b>{item_code}</b> is not present in Sales Order <b>{so_name}</b>. Please check and re-upload."
-            )
-        so_qty = float(so_item[0].qty or 0)
-        if uploaded_qty > so_qty:
-            frappe.throw(
-                f"Item <b>{item_code}</b> in Sales Order <b>{so_name}</b>: "
-                f"Uploaded total qty <b>{uploaded_qty}</b> exceeds SO qty <b>{so_qty}</b>. Please check and re-upload."
-            )
-        # PO No validation
-        so_po_no = str(frappe.get_value("Sales Order", so_name, "po_no") or "").strip()
-        # Find any uploaded row for this SO + item_code to get the PO no
-        for ic, rd in parsed_rows:
-            if ic == item_code and str(rd.get("custom_sales_order_no") or "").strip() == so_name:
-                upload_po_no = str(rd.get("custom_customer_order_number") or "").strip()
-                if upload_po_no and so_po_no and upload_po_no != so_po_no:
-                    frappe.throw(
-                        f"Item <b>{item_code}</b>: PO No <b>{upload_po_no}</b> does not match "
-                        f"Sales Order <b>{so_name}</b> PO No <b>{so_po_no}</b>. Please check and re-upload."
-                    )
-                break
-
     dn = frappe.get_doc("Delivery Note", delivery_note)
     frappe.has_permission("Delivery Note", "write", dn, throw=True)
 
@@ -375,72 +334,127 @@ def import_delivery_note_items(delivery_note, file_url):
     dn.items = []
     usage_counter = defaultdict(int)
 
+    invalid_rows = []             # PO mismatch
+    missing_so_detail_rows = []   # Missing so_detail
+
     for item_code, row_data in parsed_rows:
+        so_name     = str(row_data.get("custom_sales_order_no") or "").strip()
+        customer_po = str(row_data.get("custom_customer_order_number") or "").strip()
+
+        # Validate so_detail first
+        so_detail = str(row_data.get("so_detail") or "").strip()
+        if not so_detail:
+            missing_so_detail_rows.append({
+                "item_code":   item_code,
+                "sales_order": so_name,
+                "row_po":      customer_po,
+            })
+            continue
+
+        # Validate PO match against the Sales Order
+        if so_name:
+            try:
+                so_doc = frappe.get_doc("Sales Order", so_name)
+                so_po  = str(getattr(so_doc, "po_no", "") or "").strip()
+                if so_po and customer_po and so_po != customer_po:
+                    invalid_rows.append({
+                        "item_code":   item_code,
+                        "sales_order": so_name,
+                        "so_po":       so_po,
+                        "row_po":      customer_po,
+                    })
+                    continue
+            except frappe.DoesNotExistError:
+                invalid_rows.append({
+                    "item_code":   item_code,
+                    "sales_order": so_name,
+                    "so_po":       "NOT FOUND",
+                    "row_po":      customer_po,
+                })
+                continue
+
         candidates = existing_map.get(item_code, [])
         idx = usage_counter[item_code]
         usage_counter[item_code] += 1
 
         if idx < len(candidates):
-            # Start from the existing row dict to preserve all ERPNext-linked fields
             base = candidates[idx].as_dict()
             base.pop("name", None)
             base.pop("idx", None)
-
-            # ── KEY FIX: merge uploaded values INTO base dict BEFORE appending ──
-            # Previously values were set via setattr AFTER append, which Frappe
-            # does not reliably pick up on save(). Merging first fixes this.
             for fn, value in row_data.items():
                 if fn in SKIP_FIELDS:
                     continue
                 base[fn] = None if (value is None or str(value).strip() == "") else value
-            
-            # if base.get("custom_sales_order_no"):
-            #     base["against_sales_order"] = base["custom_sales_order_no"]
-                
-            if base.get("custom_sales_order_no"):
-                so_name = base["custom_sales_order_no"]
-                so_item_row = frappe.get_value(
-                    "Sales Order Item",
-                    {"parent": so_name, "item_code": item_code},
-                    ["name", "parent"],
-                    as_dict=True
-                )
-                base["against_sales_order"] = so_name
-                if so_item_row:
-                    base["so_detail"] = so_item_row.name
-
             dn.append("items", base)
-
         else:
-            # No existing row for this item_code — build fresh dict with uploaded values
             merged = {"item_code": item_code}
             for fn, value in row_data.items():
                 if fn in SKIP_FIELDS:
                     continue
                 merged[fn] = None if (value is None or str(value).strip() == "") else value
-
-            # if merged.get("custom_sales_order_no"):
-            #     merged["against_sales_order"] = merged["custom_sales_order_no"]
-
-            if merged.get("custom_sales_order_no"):
-                so_name = merged["custom_sales_order_no"]
-                so_item_row = frappe.get_value(
-                    "Sales Order Item",
-                    {"parent": so_name, "item_code": item_code},
-                    ["name", "parent"],
-                    as_dict=True
-                )
-                merged["against_sales_order"] = so_name
-                if so_item_row:
-                    merged["so_detail"] = so_item_row.name
-
             dn.append("items", merged)
 
-    total = len(parsed_rows)
+    total = len(dn.items)
     dn.save(ignore_permissions=True)
     frappe.db.commit()
 
+    if invalid_rows or missing_so_detail_rows:
+        message = '<div style="max-height:300px; overflow:auto;">'
+
+        if missing_so_detail_rows:
+            message += """
+                <p style="margin:10px 0;"><b>Rows skipped due to missing Sales Order Item ID:</b></p>
+                <table style="width:100%; border-collapse:separate; border-spacing:0; font-size:13px;">
+                <thead>
+                    <tr style="background-color:#fff3cd;">
+                        <th style="padding:8px; border:1px solid #d1d8dd;">Item Code</th>
+                        <th style="padding:8px; border:1px solid #d1d8dd;">Sales Order</th>
+                        <th style="padding:8px; border:1px solid #d1d8dd;">File PO</th>
+                    </tr>
+                </thead>
+                <tbody>
+            """
+            for r in missing_so_detail_rows:
+                message += f"""
+                    <tr>
+                        <td style="padding:8px; border:1px solid #e4e7eb;">{r['item_code']}</td>
+                        <td style="padding:8px; border:1px solid #e4e7eb;">{r['sales_order']}</td>
+                        <td style="padding:8px; border:1px solid #e4e7eb;">{r['row_po']}</td>
+                    </tr>
+                """
+            message += "</tbody></table>"
+
+        if invalid_rows:
+            message += """
+                <p style="margin:10px 0;"><b>Rows skipped due to PO mismatch:</b></p>
+                <table style="width:100%; border-collapse:separate; border-spacing:0; font-size:13px;">
+                <thead>
+                    <tr style="background-color:#f7fafc;">
+                        <th style="padding:8px; border:1px solid #d1d8dd;">Item Code</th>
+                        <th style="padding:8px; border:1px solid #d1d8dd;">Sales Order</th>
+                        <th style="padding:8px; border:1px solid #d1d8dd;">SO PO</th>
+                        <th style="padding:8px; border:1px solid #d1d8dd;">File PO</th>
+                    </tr>
+                </thead>
+                <tbody>
+            """
+            for r in invalid_rows:
+                message += f"""
+                    <tr>
+                        <td style="padding:8px; border:1px solid #e4e7eb;">{r['item_code']}</td>
+                        <td style="padding:8px; border:1px solid #e4e7eb;">{r['sales_order']}</td>
+                        <td style="padding:8px; border:1px solid #e4e7eb; color:#d9534f;">{r['so_po']}</td>
+                        <td style="padding:8px; border:1px solid #e4e7eb; color:#5bc0de;">{r['row_po']}</td>
+                    </tr>
+                """
+            message += "</tbody></table>"
+
+        message += "</div>"
+        frappe.msgprint(message)
+
     return {
         "total":   total,
-        "message": f"Successfully imported {total} item row(s) into {delivery_note}. Delivery Note items replaced.",
+        "message": f"Imported {total} valid row(s). "
+                   f"{len(missing_so_detail_rows)} missing SO detail, "
+                   f"{len(invalid_rows)} PO mismatch.",
     }
