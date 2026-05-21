@@ -392,6 +392,12 @@ def import_delivery_note_items(delivery_note, file_url):
                 if fn in SKIP_FIELDS:
                     continue
                 merged[fn] = None if (value is None or str(value).strip() == "") else value
+            # Carry SO linkage from the first existing candidate so ERPNext
+            # validation passes when the user splits one row into multiple rows.
+            first_candidate = existing_map.get(item_code, [None])[0]
+            if first_candidate:
+                merged["against_sales_order"] = first_candidate.against_sales_order
+                merged["so_detail"]           = first_candidate.so_detail
             dn.append("items", merged)
 
     total = len(dn.items)
