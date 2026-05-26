@@ -206,8 +206,17 @@ function toggle_sub_items_columns(frm) {
             { fieldname: 'custom_cif_unit_price_', columns: 1 },
             { fieldname: 'custom___cif_total_amount', columns: 1 }
         ];
+    } else if (!frm.doc.custom_order_type) {
+        // Empty order type — show basic columns
+        columns_to_show = [
+            { fieldname: 'item_code', columns: 2 },
+            { fieldname: 'qty', columns: 2 },
+            { fieldname: 'rate', columns: 2 },
+            { fieldname: 'amount', columns: 2 },
+            { fieldname: 'apply_tds', columns: 1 }
+        ];
     } else {
-        // Reset to default columns for non-Import order types
+        // Other order types — reset to default
         columns_to_show = [];
     }
 
@@ -246,8 +255,17 @@ function toggle_export_fields(frm) {
             { fieldname: 'custom_cif_unit_price_', columns: 1 },
             { fieldname: 'custom___cif_total_amount', columns: 1 }
         ];
+    } else if (!frm.doc.custom_order_type) {
+        // Empty order type — show basic columns
+        columns_to_show = [
+            { fieldname: 'item_code', columns: 2 },
+            { fieldname: 'qty', columns: 2 },
+            { fieldname: 'rate', columns: 2 },
+            { fieldname: 'amount', columns: 2 },
+            { fieldname: 'apply_tds', columns: 1 }
+        ];
     } else {
-        // Reset to default columns for non-Import order types
+        // Other order types — reset to default
         columns_to_show = [
             { fieldname: 'item_code', columns: 2 },
             { fieldname: 'qty', columns: 2 },
